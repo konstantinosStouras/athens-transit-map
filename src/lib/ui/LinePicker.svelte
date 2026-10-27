@@ -203,20 +203,20 @@
   /* The panel's buttons: beside the chips, or, with no chips, beside the search. */
   .tail { grid-column: 2; grid-row: 1; display: flex; align-items: center; gap: 2px; margin: -4px -6px 0 0; }
   .picker:not(.chipped) input, .find { grid-column: 1; grid-row: 1; }
-  .find { display: inline-flex; align-items: center; justify-self: start; gap: 6px; min-height: 36px; padding: 0 12px;
+  .find { display: inline-flex; align-items: center; justify-self: start; gap: 6px; min-height: 44px; padding: 0 12px;
     border: 0; border-radius: 18px; background: var(--control); color: var(--muted); font-size: 13px; cursor: pointer; }
   .find:hover { background: var(--control-hover); }
   .quick, .tip { grid-column: 1 / -1; }
-  .chip { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 10px; border: 0;
+  .chip { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 10px; border: 0;
     border-radius: 16px; background: var(--c); color: var(--t); font-weight: 700; cursor: pointer; }
   .chip .x { opacity: .8; font-weight: 400; margin-left: 2px; }
   .chip .st { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%;
-    background: rgba(0, 0, 0, .3); font-size: 11px; }
+    background: rgba(0, 0, 0, .3); font-size: 12px; }
   input { grid-column: 1 / -1; grid-row: 2; width: 100%; min-height: 40px; padding: 8px 12px; border-radius: 10px; border: 1px solid transparent;
     background: var(--control); font-size: 16px; /* 16px stops iOS zooming on focus */ }
   input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
   .quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; color: var(--muted); font-size: 12px; }
-  .q { min-height: 32px; padding: 0 10px; border: 0; border-radius: 16px; background: var(--c, #3b5bdb); color: #fff;
+  .q { min-height: 40px; padding: 0 10px; border: 0; border-radius: 16px; background: var(--c, #3b5bdb); color: #fff;
     font-weight: 700; cursor: pointer; }
   .list { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 10; margin: 0; padding: 4px;
     list-style: none; max-height: min(360px, 55vh); overflow-y: auto; overscroll-behavior: contain;
@@ -233,10 +233,10 @@
     color: var(--muted); font-size: 18px; cursor: pointer; }
   .star:hover { background: var(--control); }
   .star.on { color: #f59f00; }
-  .fav { min-height: 32px; padding: 0 10px; border: 2px solid var(--c, #3b5bdb); border-radius: 16px; background: none;
+  .fav { min-height: 40px; padding: 0 10px; border: 2px solid var(--c, #3b5bdb); border-radius: 16px; background: none;
     color: var(--fg); font-weight: 700; cursor: pointer; }
   .fav[aria-pressed="true"] { background: var(--c, #3b5bdb); color: var(--t, #fff); }
-  .all { min-height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--control);
+  .all { min-height: 40px; padding: 0 10px; border: 1px solid var(--border); border-radius: 16px; background: var(--control);
     font-size: 12px; cursor: pointer; }
-  .tip { margin-top: 6px; color: var(--muted); font-size: 11px; }
+  .tip { margin-top: 6px; color: var(--muted); font-size: 12px; }
 </style>

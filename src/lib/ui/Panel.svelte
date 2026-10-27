@@ -2,13 +2,11 @@
   import { tick, untrack } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
   import { directionGroups, focusGroup, otherDirection } from "../directions";
-  import { clock, duration, fmtMinutes } from "../format";
+  import { ago, clock, duration, fmtMinutes } from "../format";
   import { refreshCycle, ringAt } from "../refresh";
   import { STALE_S, type AppState } from "../state.svelte";
   import Bell from "./Bell.svelte";
   import HelpPop from "./HelpPop.svelte";
-  import IdeaPop from "./IdeaPop.svelte";
-  import { PEEK_MS, canSend, countVisit, markPeeked, markSent, peekDelayMs, sendIdea, wasPeeked, type IdeaState, type IdeaStatus } from "../idea";
   import LinePicker from "./LinePicker.svelte";
   import MetroToggles from "./MetroToggles.svelte";
   import StatusBanner from "./StatusBanner.svelte";
@@ -18,14 +16,13 @@
   // Phones start compact: the map matters more than the stats at a bus stop.
   let collapsed = $state(matchMedia("(max-width: 719px)").matches);
   // One popover at a time, opened from the buttons on the right: the map menu, what the symbols mean, or the
-  // trip planner (loaded on first open), or the idea box.
-  let pop = $state<"layers" | "help" | "trip" | "idea" | null>(null);
+  // trip planner (loaded on first open), or help.
+  let pop = $state<"layers" | "help" | "trip" | null>(null);
   // On a phone a popover covers the panel: what it covers cannot be reached by the keyboard either.
   const narrow = new MediaQuery("(max-width: 719px)");
   let tripButton: HTMLButtonElement | undefined = $state();
   let layersButton: HTMLButtonElement | undefined = $state();
   let helpButton: HTMLButtonElement | undefined = $state();
-  let ideaButton: HTMLButtonElement | undefined = $state();
   let foldButton: HTMLButtonElement | undefined = $state();
   let focusOpen = $state(false);   // the direction rows of several lines, under their one summary row
   // Folded, the search field is hidden; the magnifier shows it (and the list under it) until a line is picked.
@@ -34,60 +31,18 @@
   const compact = $derived(collapsed && !searching);
 
   // Focus returns to the button that opened a popover.
-  async function refocus(p: "layers" | "help" | "trip" | "idea") {
+  async function refocus(p: "layers" | "help" | "trip") {
     await tick();
-    ({ layers: layersButton, help: helpButton, trip: tripButton, idea: ideaButton })[p]?.focus();
+    ({ layers: layersButton, help: helpButton, trip: tripButton })[p]?.focus();
   }
   const closeTrip = () => { pop = null; void refocus("trip"); };   // its A and B stay on the map until its own ×
-  const toggle = (p: "layers" | "help" | "trip" | "idea") => {
+  const toggle = (p: "layers" | "help" | "trip") => {
     pop = pop === p ? null : p;
-    peek = false;
     if (pop === "help") void tick().then(() => document.getElementById("pop-help")?.focus());
-    if (pop === "idea") void tick().then(() => document.getElementById("idea-text")?.focus());
     if (pop !== "layers") return;
     app.loadMetro();   // again, if the first load failed
     app.selectStation(null);   // its card would cover the menu's metro lines on a phone
   };
-  // The idea box: blue until an idea was sent. Its label opens by itself once, after some seconds of visible use,
-  // only on the first two visits and once per tab (lib/idea.ts); it waits while a popover is open.
-  const session = (): Pick<Storage, "getItem" | "setItem"> | null => { try { return sessionStorage; } catch { return null; } };
-  let idea = $state<IdeaState>((() => { try { return countVisit(localStorage, sessionStorage); } catch { return { sent: false, visits: 0 }; } })());
-  let ideaDraft = $state("");
-  // Kept here, not in the popover: closing it while the request runs must not lose the request.
-  let ideaStatus = $state<IdeaStatus>("edit");
-  let peek = $state(false);
-  $effect(() => {
-    const delay = peekDelayMs(idea);   // tracked: sending an idea cancels a pending peek
-    const s = session();
-    if (delay == null || !s || wasPeeked(s)) return;
-    let used = 0, last = performance.now(), shut: ReturnType<typeof setTimeout> | undefined;
-    // Only visible time counts: the clock restarts whenever the tab is hidden or shown again.
-    const restart = () => (last = performance.now());
-    document.addEventListener("visibilitychange", restart);
-    const iv = setInterval(() => {
-      const now = performance.now();
-      if (!document.hidden) used += Math.min(now - last, 2000);   // the cap: timers frozen in a suspended page
-      last = now;
-      if (used < delay || document.hidden || untrack(() => pop)) return;
-      clearInterval(iv);
-      markPeeked(s);
-      peek = true;
-      shut = setTimeout(() => (peek = false), PEEK_MS);
-    }, 1000);
-    return () => { clearInterval(iv); clearTimeout(shut); document.removeEventListener("visibilitychange", restart); };
-  });
-  // Back to the form when the thanks are closed: the button stays there for another idea.
-  $effect(() => { if (pop !== "idea" && ideaStatus === "done") ideaStatus = "edit"; });
-  async function submitIdea() {
-    if (ideaStatus === "sending" || !canSend(ideaDraft)) return;
-    ideaStatus = "sending";
-    if (!(await sendIdea(ideaDraft))) { ideaStatus = "failed"; return; }
-    ideaDraft = "";
-    ideaStatus = "done";
-    try { markSent(localStorage); } catch { /* storage blocked */ }
-    idea = { ...idea, sent: true };
-  }
-
   // The chevron: opens and closes the dropdown.
   function fold() {
     searching = false;
@@ -175,13 +130,26 @@
       {/key}
     {/if}
   </svg>
+  <div class="brand"><span>ΟΑΣΑ · Live</span><a href={`${import.meta.env.BASE_URL}updates.html`}>Τι νέο υπάρχει ↗</a></div>
   <h1 class="sr">Λεωφορεία ΟΑΣΑ</h1>
+  <nav class="primary" aria-label="Βασικές ενέργειες">
+    <button type="button" aria-pressed={pop !== "trip"} onclick={() => { pop = null; collapsed = false; searching = true; void tick().then(() => document.querySelector<HTMLInputElement>(".picker input")?.focus()); }}>⌕ Βρες γραμμή</button>
+    <button type="button" aria-pressed={pop === "trip"} aria-expanded={pop === "trip"} bind:this={tripButton} onclick={() => toggle("trip")}>↗ Σχεδίασε διαδρομή</button>
+  </nav>
 
   <!-- Always shown: the picked lines, the search, and the chevron. The map buttons are on the right (.rail). -->
   <div class="bar">
     <LinePicker {app} expanded={!collapsed} searchOpen={searching} onsearch={() => (searching = true)} onclose={() => (searching = false)} {tail} />
   </div>
 
+  <div class="freshness" class:stale={badge?.cls === "stale" || app.statusFailed}>
+    <span class="live-dot"></span>
+    {#if app.statusFailed}Πρόβλημα σύνδεσης · νέα προσπάθεια σε λίγο
+    {:else if badge}{badge.text}
+    {:else if oldest != null}Ενημέρωση {ago(oldest, app.serverNow)}
+    {:else if app.city}Ενημέρωση {ago(app.city.updated_at, app.serverNow)}
+    {:else}Σύνδεση με τα ζωντανά δεδομένα…{/if}
+  </div>
   <!-- The dropdown: the tools, then what the picked lines are doing. -->
   <div id="panel-body" hidden={collapsed}>
     <div class="tools">
@@ -196,6 +164,20 @@
       <div class="muted">Διάλεξε έως 5 γραμμές για να δεις τα οχήματα ζωντανά.</div>
     {/if}
 
+    {#each app.selected as id (id)}
+      <div class="line-summary">
+        <strong>{id} · {app.lineInfo.get(id)?.name ?? "Φόρτωση γραμμής…"}</strong>
+        {#if app.statics[id]}
+          <div class="direction-actions" aria-label={`Κατευθύνσεις γραμμής ${id}`}>
+            <button type="button" aria-pressed={!app.focus[id]} onclick={() => app.setFocus(id, null)}>Και οι δύο κατευθύνσεις</button>
+            {#each directionGroups(app.statics[id]) as g}
+              <button type="button" aria-pressed={app.focus[id]?.join() === g.variants.join()} onclick={() => { app.setFocus(id, g.variants); app.selectRoute(id, g.variants[0]); }}>→ {g.to}</button>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    {/each}
+    <details class="network-details"><summary>Στατιστικά &amp; υπόμνημα χάρτη</summary>
     {#if app.selected.length || (app.cityOn && app.city)}
       <div class="stats">
         <div><b>{app.stats.vehicles}</b><span>οχήματα</span></div>
@@ -215,6 +197,7 @@
       {#if ages}<span><b class="age">24″</b>πριν από τόσο ήρθε η θέση</span>{/if}
     </div>
 
+    </details>
     {#if focused.length}
       {#if focused.length > 1}
         <!-- Several lines in one direction: one row, the rows of each line behind the chevron. -->
@@ -281,7 +264,7 @@
 
 <!-- The popover of a map button opens on the right, beside the buttons (on a phone over the panel). -->
 {#if pop}
-  <div class="popwrap" class:raised={pop === "layers" || pop === "help"}>
+  <div class="popwrap raised">
     {#if pop === "trip"}
       {#await import("./TripPlanner.svelte")}
         <div class="pop"><p class="hint">Φόρτωση…</p></div>
@@ -290,10 +273,6 @@
       {:catch}
         <div class="pop"><p class="hint">Δεν φόρτωσε. Έλεγξε τη σύνδεση και πάτα ξανά την πυξίδα.</p></div>
       {/await}
-    {:else if pop === "idea"}
-      <div class="pop" id="pop-idea" role="dialog" aria-label="Ιδέες για την εφαρμογή">
-        <IdeaPop bind:draft={ideaDraft} status={ideaStatus} onsubmit={submitIdea} />
-      </div>
     {:else if pop === "help"}
       <div class="pop" id="pop-help" role="dialog" tabindex="-1" aria-label="Τι σημαίνει κάθε σύμβολο">
         <HelpPop />
@@ -387,32 +366,37 @@
       <path d="M2 10S5 4.8 10 4.8 18 10 18 10 15 15.2 10 15.2 2 10 2 10z" /><circle cx="10" cy="10" r="2.5" />
     </svg>
   </button>
-  <button type="button" class="tool" class:on={pop === "trip"} class:pinned={!!app.tripEnds && pop !== "trip"} aria-expanded={pop === "trip"} bind:this={tripButton}
-    aria-label="Διαδρομή: ποιες γραμμές με πάνε" data-tip="Διαδρομή: διάλεξε Α και Β και δες ποιες γραμμές σε πάνε" onclick={() => toggle("trip")}>
-    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round">
-      <circle cx="10" cy="10" r="8" /><path d="M12.8 7.2l-1.6 4-4 1.6 1.6-4z" />
-    </svg>
-  </button>
+
   <button type="button" class="tool" class:on={pop === "help"} aria-expanded={pop === "help"} aria-controls="pop-help"
     aria-label="Τι σημαίνει κάθε σύμβολο" data-tip="Τι σημαίνει κάθε σύμβολο και χρώμα στον χάρτη" onclick={() => toggle("help")} bind:this={helpButton}>
     <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="10" cy="10" r="8" /><path d="M7.8 7.9a2.3 2.3 0 1 1 3.3 2.1c-.7.4-1.1.8-1.1 1.6" /><circle cx="10" cy="14.2" r=".5" fill="currentColor" />
     </svg>
   </button>
-  <button type="button" class="tool idea" class:fresh={!idea.sent} class:on={pop === "idea"} class:peek aria-expanded={pop === "idea"} aria-controls="pop-idea"
-    bind:this={ideaButton} aria-label="Έρχεται εφαρμογή: πες μας τι να έχει" data-tip={peek ? "" : "Έρχεται εφαρμογή · Τι να έχει;"} onclick={() => toggle("idea")}>
-    <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-      <rect x="5.5" y="2" width="9" height="16" rx="2.2" /><path d="M9 15h2" />
-    </svg>
-    <span class="peek-label" aria-hidden="true">Έρχεται εφαρμογή · Τι να έχει;</span>
-  </button>
+
 </div>
 
 <style>
-  .panel { position: absolute; z-index: 5; top: calc(12px + env(safe-area-inset-top)); left: 12px; width: 344px;
+  .brand { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 12px; font-weight: 750; }
+  .brand a { font-size: 12px; color: var(--accent); font-weight: 500; padding: 6px 0; }
+  .primary { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+  .primary button { min-height: 46px; border-radius: 10px; border: 1px solid var(--border); background: var(--control); cursor: pointer; font-size: 13px; font-weight: 600; }
+  .primary button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: white; }
+  .freshness { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ontime); flex: none; }
+  .freshness.stale .live-dot { background: var(--late3); }
+  .line-summary { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .line-summary strong { display: block; font-size: 14px; }
+  .direction-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .direction-actions button { min-height: 40px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--control); cursor: pointer; font-size: 12px; }
+  .direction-actions button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .network-details { margin-top: 12px; font-size: 13px; }
+  .network-details summary { cursor: pointer; padding: 6px 0; color: var(--muted); }
+
+  .panel { position: absolute; z-index: 5; top: calc(12px + env(safe-area-inset-top)); left: 12px; width: 380px;
     max-width: calc(100% - 64px); padding: 12px 14px; background: var(--panel); border: 1px solid var(--border);
-    border-radius: 14px; box-shadow: var(--shadow); backdrop-filter: blur(8px); }
-  .panel.compact { width: fit-content; max-width: min(344px, calc(100% - 64px)); }
+    border-radius: 14px; box-shadow: var(--shadow); backdrop-filter: blur(8px); max-height: calc(100dvh - 40px); overflow-y: auto; }
+  .panel.compact { width: 380px; }
   .ring { position: absolute; top: -1px; left: -1px; pointer-events: none; overflow: visible; }
   .ring rect { fill: none; stroke-width: 2; }
   .ring .fill { stroke: var(--accent); stroke-dasharray: 100; stroke-dashoffset: 100;
@@ -435,24 +419,15 @@
     border-radius: 50%; background: var(--accent); }
   /* The map buttons (right, under the zoom and locate buttons) and the popover that opens beside them. */
   /* The same look and size as MapLibre's zoom and locate buttons above it (white in dark too). */
-  .rail { position: absolute; z-index: 5; top: calc(116px + env(safe-area-inset-top)); right: 10px; width: 29px; display: flex;
+  .rail { position: absolute; z-index: 5; top: calc(116px + env(safe-area-inset-top)); right: 10px; width: 44px; display: flex;
     flex-direction: column; background: #fff; border-radius: 4px; box-shadow: 0 0 0 2px rgba(0, 0, 0, .1); }
-  .rail .tool { width: 29px; height: 29px; border-radius: 0; color: #333; }
+  .rail .tool { width: 44px; height: 44px; border-radius: 0; color: #333; }
   .rail .tool + .tool { border-top: 1px solid #ddd; }
   .rail .tool:first-child { border-radius: 4px 4px 0 0; }
   .rail .tool:last-child { border-radius: 0 0 4px 4px; }
   .rail .tool:hover, .rail .tool.on { background: rgba(0, 0, 0, .08); color: #333; }
   .rail .tool.on { color: var(--accent); }
-  .rail .tool.filtering::after, .rail .tool.pinned::after { top: 3px; right: 3px; }
-  /* The idea button: blue until an idea was sent. Its label slides out to the left, joined to the rail. */
-  .rail .tool.idea.fresh { color: var(--accent); }
-  .peek-label { position: absolute; right: 100%; top: 0; height: 29px; display: flex; align-items: center; padding: 0 10px;
-    white-space: nowrap; background: #fff; color: #333; font-size: 12px; font-weight: 600; border-radius: 4px 0 0 4px;
-    box-shadow: -2px 0 0 0 rgba(0, 0, 0, .1), 0 2px 0 0 rgba(0, 0, 0, .1), 0 -2px 0 0 rgba(0, 0, 0, .1);
-    clip-path: inset(-3px 0 -3px 100%); pointer-events: none; transition: clip-path .45s ease; }
-  .rail .tool.peek .peek-label { clip-path: inset(-3px -1px -3px -3px); pointer-events: auto; }
-  .rail .tool.peek::before { display: none; }
-  @media (prefers-reduced-motion: reduce) { .peek-label { transition: none; } }
+  .rail .tool.filtering::after { top: 3px; right: 3px; }
   /* What a button does: beside it, on hover or keyboard focus (no tooltip on a touch screen; the popover itself opens). */
   .rail .tool::before { content: attr(data-tip); position: absolute; right: calc(100% + 10px); top: 50%; translate: 0 -50%; width: max-content;
     max-width: 220px; padding: 6px 9px; border-radius: 8px; background: var(--panel); color: var(--fg); border: 1px solid var(--border);
@@ -460,7 +435,7 @@
     opacity: 0; transition: opacity .12s; }
   @media (hover: hover) { .rail .tool:not(.on):hover::before { opacity: 1; transition-delay: .35s; } }
   .rail .tool:not(.on):focus-visible::before { opacity: 1; }
-  .popwrap { position: absolute; z-index: 5; top: calc(116px + env(safe-area-inset-top)); right: 52px; width: 344px; max-width: calc(100% - 64px);
+  .popwrap { position: absolute; z-index: 5; top: calc(116px + env(safe-area-inset-top)); right: 66px; width: 380px; max-width: calc(100% - 64px);
     max-height: calc(100dvh - 128px - env(safe-area-inset-top)); display: flex; flex-direction: column; }
   .popwrap.raised { z-index: 8; }   /* the map menu over the info card */
   .pop { min-height: 0; padding: 12px 14px; font-size: 13px; background: var(--bg); border: 1px solid var(--border);
@@ -506,8 +481,8 @@
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
   [hidden] { display: none !important; }
   @media (max-width: 719px) {
-    .panel { left: 8px; right: 60px; width: auto; max-width: none; padding: 10px 12px; }
-    .panel.compact { right: auto; max-width: calc(100% - 68px); }
+    .panel { max-height: 65dvh; left: 8px; right: 60px; width: auto; max-width: none; padding: 10px 12px; }
+    .panel.compact { right: 60px; width: auto; max-width: none; }
     .rail { top: calc(50px + env(safe-area-inset-top)); }   /* no zoom buttons above it */
     .popwrap { top: calc(12px + env(safe-area-inset-top)); left: 8px; right: 60px; width: auto; max-width: none;
       max-height: calc(100dvh - 24px - env(safe-area-inset-top)); }

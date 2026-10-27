@@ -2,7 +2,7 @@
   import { untrack } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
   import { directionGroups, groupOf } from "../directions";
-  import { ago, clock, delayClass, delayText } from "../format";
+  import { ago, clock, gtfsEnded } from "../format";
   import { clampDrag, settle, type SheetState } from "../sheet";
   import type { AppState } from "../state.svelte";
   import type { DirectionGroup } from "../directions";
@@ -105,7 +105,7 @@
      that direction's route card (the vehicle is not on it). -->
 {#snippet dirs(line: string, groups: DirectionGroup[], focus: string[] | undefined, mine: DirectionGroup | undefined)}
   <div class="dirs" role="group" aria-label="Κατεύθυνση στον χάρτη">
-    <button type="button" aria-pressed={!focus} onclick={() => app.setFocus(line, null)}>Όλες</button>
+    <button type="button" aria-pressed={!focus} onclick={() => app.setFocus(line, null)}>Και οι δύο κατευθύνσεις</button>
     {#each groups as g (g.variants.join())}
       <button type="button" class:mine={g === mine} aria-pressed={focus?.join() === g.variants.join()}
         title={g === mine ? "Η κατεύθυνση αυτού του οχήματος" : undefined}
@@ -137,7 +137,7 @@
         aria-label={sheet === "open" ? "Σύμπτυξη λεπτομερειών" : "Ανάπτυξη λεπτομερειών"} onclick={e => { if (e.detail === 0) sheet = flip(sheet); }}><span></span></button>
       <header>
         <span class="pill" style:--c={app.lineColor(line).bg} style:--t={app.lineColor(line).fg}>{line}</span>
-        <h2>{info?.name ?? ""}</h2>
+        <h2>{vehicle ? (groupOf(vehicle.groups, vehicle.v.variant)?.to ? `→ ${groupOf(vehicle.groups, vehicle.v.variant)?.to}` : info?.name ?? "") : route ? `→ ${route.to}` : ""}</h2>
         <button type="button" class="star" class:on={starred} aria-pressed={starred} title={starred ? "Αφαίρεση από τις αγαπημένες" : "Προσθήκη στις αγαπημένες"}
           aria-label={starred ? `Αφαίρεση της γραμμής ${line} από τις αγαπημένες` : `Προσθήκη της γραμμής ${line} στις αγαπημένες`}
           onclick={() => app.toggleFavorite(line)}>{starred ? "★" : "☆"}</button>
@@ -156,27 +156,20 @@
 
       {#if vehicle}
         {@const v = vehicle.v}
-        <table>
-          <tbody>
-            <tr>
-              <th>Καθυστέρηση</th>
-              <td>
-                <i class="dot {delayClass(v.delay_s)}"></i>
-                {delayText(v.delay_s)}
-              </td>
-            </tr>
-            {#if v.trip_label}<tr><th>Δρομολόγιο</th><td title={v.trip_id ?? ""}>{v.trip_label}</td></tr>{/if}
-            {#if v.next_stop_id}
-              <tr>
-                <th>Επόμενη στάση</th>
-                <td>{vehicle.nextStop?.name ?? ""} <span class="muted">({v.next_stop_id})</span></td>
-              </tr>
-            {/if}
-            <tr><th>Θέση GPS</th><td title={clock(v.position_at)}>{ago(v.position_at, app.serverNow)}</td></tr>
-            <tr><th>Όχημα</th><td>{v.id}</td></tr>
-            {#if "loading" in vehicle}<tr><th></th><td class="muted">Φόρτωση δρομολογίου…</td></tr>{/if}
-          </tbody>
-        </table>
+        <div class="next-stop"><span>Επόμενη στάση</span><strong>{vehicle.nextStop?.name ?? "Δεν είναι διαθέσιμη"}</strong></div>
+        <p class="gps-freshness">Θέση GPS · {ago(v.position_at, app.serverNow)}</p>
+        <div class="estimate">
+          <span>Σε σχέση με το πρόγραμμα</span>
+          <strong>{v.delay_s == null ? "Χωρίς εκτίμηση" : Math.abs(v.delay_s) < 60 ? "Περίπου στην ώρα του" : `Περίπου ${Math.round(Math.abs(v.delay_s) / 60)} ${Math.round(Math.abs(v.delay_s) / 60) === 1 ? "λεπτό" : "λεπτά"} ${v.delay_s < 0 ? "νωρίτερα" : "καθυστέρηση"}`}</strong>
+          {#if gtfsEnded(app.status?.gtfs_expires)}
+            <p class="schedule-warning">Το πρόγραμμα έχει λήξει. Η σύγκριση με το ωράριο είναι κατά προσέγγιση· η θέση GPS ενημερώνεται ξεχωριστά.</p>
+          {:else}<p>Σύγκριση με το ωράριο, όχι πρόβλεψη άφιξης στη στάση σου.</p>{/if}
+        </div>
+        {#if v.trip_label}<p class="trip-label">{v.trip_label}</p>{/if}
+        {#if "loading" in vehicle}<p class="muted">Φόρτωση δρομολογίου…</p>{/if}
+        <details class="technical"><summary>Περισσότερες λεπτομέρειες</summary>
+          <dl><dt>Όχημα</dt><dd>{v.id}</dd><dt>Κωδικός στάσης</dt><dd>{v.next_stop_id ?? "—"}</dd><dt>Κωδικός δρομολογίου</dt><dd>{v.trip_id ?? "—"}</dd><dt>Ώρα GPS</dt><dd>{clock(v.position_at)}</dd></dl>
+        </details>
         {#if vehicle.groups.length > 1}
           {@const mine = groupOf(vehicle.groups, v.variant)}
           {@render dirs(vehicle.line, vehicle.groups, vehicle.focus, mine)}
@@ -198,7 +191,20 @@
 {/if}
 
 <style>
-  .card { position: absolute; z-index: 6; left: 12px; bottom: 28px; width: 340px; padding: 12px 14px;
+  .next-stop { padding: 12px 0 6px; }
+  .next-stop span, .estimate > span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  .next-stop strong { display: block; font-size: 20px; line-height: 1.3; }
+  .gps-freshness { color: var(--muted); font-size: 13px; margin: 4px 0 14px; }
+  .estimate { background: var(--control); border-radius: 10px; padding: 12px; }
+  .estimate strong { font-size: 15px; }
+  .estimate p { font-size: 12px; margin: 6px 0 0; }
+  .schedule-warning { background: var(--warn-bg); padding: 8px; border-radius: 6px; }
+  .trip-label { font-size: 13px; }
+  .technical { margin: 12px 0; font-size: 12px; color: var(--muted); }
+  .technical summary { cursor: pointer; min-height: 30px; }
+  dl { overflow-wrap: anywhere; } dt { margin-top: 8px; } dd { margin-left: 0; color: var(--fg); }
+
+  .card { position: absolute; z-index: 6; right: 66px; bottom: 28px; width: 380px; padding: 12px 14px;
     background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
     backdrop-filter: blur(8px); }
   .top { touch-action: none; }
@@ -208,7 +214,7 @@
   .body { max-height: min(55dvh, 420px); overflow-y: auto; overscroll-behavior: contain; transition: opacity .15s; }
   .card.peek .body { opacity: 0; }   /* no sliver of it under the header */
   header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  h2 { flex: 1; margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); overflow: hidden;
+  h2 { flex: 1; margin: 0; font-size: 16px; font-weight: 700; color: var(--fg); overflow: hidden;
     text-overflow: ellipsis; white-space: nowrap; }
   .pill { padding: 2px 8px; border-radius: 10px; background: var(--c); color: var(--t); font-weight: 700; }
   .close { width: 36px; height: 36px; margin: -8px -10px -8px 0; border: 0; background: none; font-size: 22px;
@@ -227,11 +233,10 @@
   td { padding: 2px 0; font-variant-numeric: tabular-nums; }
   .muted { color: var(--muted); font-size: 12px; }
   .dirs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  .dirs button { min-height: 36px; padding: 4px 12px; border: 1px solid var(--border); border-radius: 18px;
+  .dirs button { min-height: 44px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 18px;
     background: var(--control); cursor: pointer; font-size: 13px; }
   .dirs button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
   .dirs button.mine:not([aria-pressed="true"]) { border-color: var(--accent); }
-  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
   @media (prefers-reduced-motion: reduce) { .card { transition: none !important; } }
   @media (max-width: 719px) {
     .card { left: 0; right: 0; bottom: 0; width: auto; border-radius: 16px 16px 0 0; border-width: 1px 0 0;
