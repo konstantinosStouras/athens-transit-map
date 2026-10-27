@@ -1,3 +1,5 @@
+import { displayName } from "../transit-names";
+import type { Language } from "../translate";
 // GeoJSON for the map. Contract shapes are [lat, lon]; GeoJSON wants [lon, lat].
 
 import type { FeatureCollection, LineString, Point } from "geojson";
@@ -29,7 +31,7 @@ export function variantFC(line: DrawnLine | undefined, variant: string | null | 
 }
 
 // The stops of one variant, or with `all` (no direction focused) of every variant of the line, each stop once.
-export function stopsFC(line: DrawnLine | undefined, variant: string | null | undefined, all = false): FeatureCollection<Point> {
+export function stopsFC(line: DrawnLine | undefined, variant: string | null | undefined, all = false, language: Language = "el"): FeatureCollection<Point> {
   const v = variant ? line?.data.variants[variant] : undefined;
   if (!line || (!v && !all)) return { type: "FeatureCollection", features: [] };
   const stops = all ? [...new Set(Object.values(line.data.variants).flatMap(x => x.stops))] : v!.stops;
@@ -37,7 +39,7 @@ export function stopsFC(line: DrawnLine | undefined, variant: string | null | un
     type: "FeatureCollection",
     features: stops.flatMap(id => {
       const s = line.data.stops[id];
-      return s ? [{ type: "Feature" as const, properties: { id, name: s.name, color: line.color },
+      return s ? [{ type: "Feature" as const, properties: { id, name: displayName(s, language), color: line.color },
         geometry: { type: "Point" as const, coordinates: [s.lon, s.lat] } }] : [];
     }),
   };

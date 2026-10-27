@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t as tr } from "../i18n.svelte";
+  import { t as tr, locale, nameOf } from "../i18n.svelte";
   import { termini } from "../metro";
   import type { AppState } from "../state.svelte";
 
@@ -12,10 +12,10 @@
 
 <div class="metro" role="group" aria-label={tr("Γραμμές μετρό και τραμ στον χάρτη")}>
   {#each lines as l (l.id)}
-    {@const ends = app.metro && termini(app.metro, l.id)}
+    {@const ends = app.metro && termini(app.metro, l.id, locale.language)}
     <label class="switch" style:--accent={tr(l.color)}>
       <input type="checkbox" role="switch" checked={app.metroLines.includes(l.id)} onchange={() => app.toggleMetroLine(l.id)} />
-      <b>{tr(l.id)}</b><span>{tr(ends ? `${ends[0]} – ${ends[1]}` : l.name)}</span>
+      <b>{tr(l.id)}</b><span>{tr(ends ? `${ends[0]} – ${ends[1]}` : nameOf(l))}</span>
     </label>
   {/each}
 </div>

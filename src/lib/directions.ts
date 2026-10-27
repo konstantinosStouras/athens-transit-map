@@ -1,3 +1,5 @@
+import { displayName, displayText } from "./transit-names";
+import type { Language } from "./translate";
 // A line's directions: its variants grouped by last stop ("→ ΣΥΝΤΑΓΜΑ").
 // The contract's `direction` field is 0 for every variant of some lines, so it is not used.
 
@@ -5,12 +7,12 @@ import type { LineStatic } from "./types";
 
 export interface DirectionGroup { to: string; variants: string[] }
 
-export function directionGroups(st: LineStatic): DirectionGroup[] {
+export function directionGroups(st: LineStatic, language: Language = "el"): DirectionGroup[] {
   const groups = new Map<string, DirectionGroup & { headsign: string }>();
   for (const [id, v] of Object.entries(st.variants)) {
     const last = v.stops[v.stops.length - 1];
     if (!last) continue;
-    const g = groups.get(last) ?? { to: st.stops[last]?.name ?? last, headsign: v.headsign, variants: [] };
+    const g = groups.get(last) ?? { to: displayName(st.stops[last], language) || last, headsign: displayText(v.headsign, v.headsign_en, language), variants: [] };
     g.variants.push(id);
     groups.set(last, g);
   }

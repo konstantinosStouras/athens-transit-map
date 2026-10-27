@@ -10,6 +10,7 @@ export interface Vehicle {
   variant: string | null;
   trip_id: string | null;
   trip_label: string | null;
+  trip_label_en?: string | null;
   delay_s: number | null;
   next_stop_id: string | null;
   // Contract rev 3, optional: older servers omit them.
@@ -75,6 +76,7 @@ export interface LinesIndex {
 
 export interface Variant {
   headsign: string;
+  headsign_en?: string;
   direction: number;
   shape: [number, number][];
   stops: string[];
@@ -82,6 +84,7 @@ export interface Variant {
 
 export interface Stop {
   name: string;
+  name_en?: string;
   lat: number;
   lon: number;
 }

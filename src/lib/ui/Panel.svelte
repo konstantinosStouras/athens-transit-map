@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t as tr, locale, setLanguage } from "../i18n.svelte";
+  import { t as tr, locale, setLanguage, nameOf } from "../i18n.svelte";
   import { tick } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
   import { directionGroups, focusGroup, otherDirection } from "../directions";
@@ -107,10 +107,10 @@
 <svelte:window onclick={e => { if (pop && pop !== "trip" && !(e.target as Element).closest?.(".pop, .tool")) pop = null; }}
   onkeydowncapture={onEscape} />
 
-<section class="panel" class:compact inert={!!pop && narrow.current} aria-label={tr("Πίνακας ελέγχου")}>
+<section class="panel" class:compact inert={!!pop && pop !== "trip" && narrow.current} aria-label={tr("Πίνακας ελέγχου")}>
   <div class="language" role="group" aria-label={locale.language === "el" ? "Γλώσσα" : "Language"}>
-    <button type="button" lang="el" aria-label="Ελληνικά" aria-pressed={locale.language === "el"} onclick={() => setLanguage("el")}>ΕΛ</button>
-    <button type="button" lang="en" aria-label="English" aria-pressed={locale.language === "en"} onclick={() => setLanguage("en")}>EN</button>
+    <button type="button" lang="el" aria-label="Ελληνικά" aria-pressed={locale.language === "el"} onclick={() => setLanguage("el")}><img src={`${import.meta.env.BASE_URL}flags/el.svg`} alt="" width="27" height="18" /></button>
+    <button type="button" lang="en" aria-label="English" aria-pressed={locale.language === "en"} onclick={() => setLanguage("en")}><img src={`${import.meta.env.BASE_URL}flags/en.svg`} alt="" width="27" height="18" /></button>
   </div>
   <div class="brand"><span>{tr("ΟΑΣΑ · Live")}</span><a href={`${import.meta.env.BASE_URL}updates.html?lang=${locale.language}`}>{tr("Τι νέο υπάρχει ↗")}</a></div>
   <a class="feedback-link" href={`${import.meta.env.BASE_URL}feedback.html?lang=${locale.language}`}>{tr("Σχόλια μέχρι σήμερα ↗")}</a>
@@ -120,6 +120,16 @@
     <button type="button" aria-pressed={pop === "trip"} aria-expanded={pop === "trip"} bind:this={tripButton} onclick={() => toggle("trip")}>{tr("↗ Σχεδίασε διαδρομή")}</button>
   </nav>
 
+  {#if pop === "trip"}
+      {#await import("./TripPlanner.svelte")}
+        <div class="pop"><p class="hint">{tr("Φόρτωση…")}</p></div>
+      {:then m}
+        <m.default {app} onclose={closeTrip} />
+      {:catch}
+        <div class="pop"><p class="hint">{tr("Δεν φόρτωσε. Έλεγξε τη σύνδεση και πάτα ξανά την πυξίδα.")}</p></div>
+      {/await}
+  {/if}
+  <div hidden={pop === "trip"}>
   <!-- Always shown: the picked lines, the search, and the chevron. The map buttons are on the right (.rail). -->
   <div class="bar">
     <LinePicker {app} expanded={!collapsed} searchOpen={searching} onsearch={() => (searching = true)} onclose={() => (searching = false)} {tail} />
@@ -148,11 +158,11 @@
 
     {#each app.selected as id (id)}
       <div class="line-summary">
-        <strong>{tr(id)} · {tr(app.lineInfo.get(id)?.name ?? "Φόρτωση γραμμής…")}</strong>
+        <strong>{tr(id)} · {tr(nameOf(app.lineInfo.get(id)) || "Φόρτωση γραμμής…")}</strong>
         {#if app.statics[id]}
           <div class="direction-actions" aria-label={tr((`Κατευθύνσεις γραμμής ${id}`))}>
             <button type="button" aria-pressed={!app.focus[id]} onclick={() => app.setFocus(id, null)}>{tr("Και οι δύο κατευθύνσεις")}</button>
-            {#each directionGroups(app.statics[id]) as g}
+            {#each directionGroups(app.statics[id], locale.language) as g}
               <button type="button" aria-pressed={app.focus[id]?.join() === g.variants.join()} onclick={() => { app.setFocus(id, g.variants); app.selectRoute(id, g.variants[0]); }}>→ {tr(g.to)}</button>
             {/each}
           </div>
@@ -241,21 +251,14 @@
       </svg>
     </button>
   {/snippet}
+  </div>
 </section>
 
 
 <!-- The popover of a map button opens on the right, beside the buttons (on a phone over the panel). -->
-{#if pop}
+{#if pop && pop !== "trip"}
   <div class="popwrap raised">
-    {#if pop === "trip"}
-      {#await import("./TripPlanner.svelte")}
-        <div class="pop"><p class="hint">{tr("Φόρτωση…")}</p></div>
-      {:then m}
-        <m.default {app} onclose={closeTrip} />
-      {:catch}
-        <div class="pop"><p class="hint">{tr("Δεν φόρτωσε. Έλεγξε τη σύνδεση και πάτα ξανά την πυξίδα.")}</p></div>
-      {/await}
-    {:else if pop === "help"}
+    {#if pop === "help"}
       <div class="pop" id="pop-help" role="dialog" tabindex="-1" aria-label={tr("Τι σημαίνει κάθε σύμβολο")}>
         <HelpPop />
       </div>
@@ -356,6 +359,7 @@
 
 <style>
   .language { display: flex; gap: 3px; margin-bottom: 8px; }
+  .language img { display: block; margin: auto; border-radius: 2px; }
   .language button { min-width: 44px; min-height: 36px; border: 1px solid var(--border); border-radius: 8px; background: var(--control); color: var(--fg); font-weight: 650; cursor: pointer; }
   .language button[aria-pressed="true"] { background: var(--accent); color: white; border-color: var(--accent); }
 

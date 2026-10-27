@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t as tr } from "../i18n.svelte";
+  import { t as tr, locale, nameOf } from "../i18n.svelte";
   import { untrack } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
   import { directionGroups, groupOf } from "../directions";
@@ -15,7 +15,7 @@
     const c = app.selectedCity;
     const sv = app.selectedVehicle ?? (c && {
       line: c.line, faded: false, loading: true,
-      v: { ...c, route_code: "", trip_id: null, trip_label: null, next_stop_id: null },
+      v: { ...c, route_code: "", trip_id: null, trip_label: null, trip_label_en: null, next_stop_id: null },
     });
     if (!sv) return null;
     const st = app.statics[sv.line];
@@ -23,7 +23,7 @@
       ...sv,
       info: app.lineInfo.get(sv.line),
       nextStop: sv.v.next_stop_id ? st?.stops[sv.v.next_stop_id] : undefined,
-      groups: st ? directionGroups(st) : [],
+      groups: st ? directionGroups(st, locale.language) : [],
       focus: app.focus[sv.line],
     };
   });
@@ -87,7 +87,7 @@
     const st = app.statics[s.line];
     const variant = st?.variants[s.variant];
     if (!variant) return null;
-    const name = (i: number) => st.stops[variant.stops[i]]?.name ?? "";
+    const name = (i: number) => nameOf(st.stops[variant.stops[i]]);
     return {
       line: s.line,
       id: s.variant,
@@ -96,7 +96,7 @@
       from: name(0),
       to: name(variant.stops.length - 1),
       running: (app.live[s.line]?.vehicles ?? []).filter(v => v.variant === s.variant).length,
-      groups: directionGroups(st),
+      groups: directionGroups(st, locale.language),
       focus: app.focus[s.line],
     };
   });
@@ -138,7 +138,7 @@
         aria-label={tr((sheet === "open" ? "Σύμπτυξη λεπτομερειών" : "Ανάπτυξη λεπτομερειών"))} onclick={e => { if (e.detail === 0) sheet = flip(sheet); }}><span></span></button>
       <header>
         <span class="pill" style:--c={tr(app.lineColor(line).bg)} style:--t={tr(app.lineColor(line).fg)}>{tr(line)}</span>
-        <h2>{tr(vehicle ? (groupOf(vehicle.groups, vehicle.v.variant)?.to ? `→ ${groupOf(vehicle.groups, vehicle.v.variant)?.to}` : info?.name ?? "") : route ? `→ ${route.to}` : "")}</h2>
+        <h2>{tr(vehicle ? (groupOf(vehicle.groups, vehicle.v.variant)?.to ? `→ ${groupOf(vehicle.groups, vehicle.v.variant)?.to}` : nameOf(info)) : route ? `→ ${route.to}` : "")}</h2>
         <button type="button" class="star" class:on={starred} aria-pressed={starred} title={tr((starred ? "Αφαίρεση από τις αγαπημένες" : "Προσθήκη στις αγαπημένες"))}
           aria-label={tr((starred ? `Αφαίρεση της γραμμής ${line} από τις αγαπημένες` : `Προσθήκη της γραμμής ${line} στις αγαπημένες`))}
           onclick={() => app.toggleFavorite(line)}>{tr(starred ? "★" : "☆")}</button>
@@ -157,7 +157,7 @@
 
       {#if vehicle}
         {@const v = vehicle.v}
-        <div class="next-stop"><span>{tr("Επόμενη στάση")}</span><strong>{tr(vehicle.nextStop?.name ?? "Δεν είναι διαθέσιμη")}</strong></div>
+        <div class="next-stop"><span>{tr("Επόμενη στάση")}</span><strong>{tr(nameOf(vehicle.nextStop) || "Δεν είναι διαθέσιμη")}</strong></div>
         <p class="gps-freshness">{tr("Θέση GPS · ")}{tr(ago(v.position_at, app.serverNow))}</p>
         <div class="estimate">
           <span>{tr("Σε σχέση με το πρόγραμμα")}</span>
@@ -166,7 +166,7 @@
             <p class="schedule-warning">{tr("Το πρόγραμμα έχει λήξει. Η σύγκριση με το ωράριο είναι κατά προσέγγιση· η θέση GPS ενημερώνεται ξεχωριστά.")}</p>
           {:else}<p>{tr("Σύγκριση με το ωράριο, όχι πρόβλεψη άφιξης στη στάση σου.")}</p>{/if}
         </div>
-        {#if v.trip_label}<p class="trip-label">{tr(v.trip_label)}</p>{/if}
+        {#if v.trip_label}<p class="trip-label">{nameOf({ name: v.trip_label, name_en: v.trip_label_en })}</p>{/if}
         {#if "loading" in vehicle}<p class="muted">{tr("Φόρτωση δρομολογίου…")}</p>{/if}
         <details class="technical"><summary>{tr("Περισσότερες λεπτομέρειες")}</summary>
           <dl><dt>{tr("Όχημα")}</dt><dd>{tr(v.id)}</dd><dt>{tr("Κωδικός στάσης")}</dt><dd>{tr(v.next_stop_id ?? "—")}</dd><dt>{tr("Κωδικός δρομολογίου")}</dt><dd>{tr(v.trip_id ?? "—")}</dd><dt>{tr("Ώρα GPS")}</dt><dd>{tr(clock(v.position_at))}</dd></dl>

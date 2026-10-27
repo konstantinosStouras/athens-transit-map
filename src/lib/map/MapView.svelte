@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t as tr } from "../i18n.svelte";
+  import { t as tr, locale } from "../i18n.svelte";
   import { Map as MlMap, Marker, NavigationControl, Popup, setWorkerUrl, type ExpressionSpecification, type GeoJSONSource } from "maplibre-gl";
   import "maplibre-gl/dist/maplibre-gl.css";
   import workerUrl from "virtual:maplibre-worker";
@@ -189,7 +189,7 @@
         "circle-stroke-width": byZoom([10, sel(3, 2), 14, sel(3.5, 3)]) } });
     m.addLayer({ id: "metro-label", type: "symbol", source: "metro", minzoom: 13,
       filter: ["==", ["get", "kind"], "station"],
-      layout: { "text-field": ["get", "name"], "text-font": ["Noto Sans Bold"], "text-size": 11,
+      layout: { "text-field": ["coalesce", ["get", "display_name"], ["get", "name"]], "text-font": ["Noto Sans Bold"], "text-size": 11,
         "text-offset": [0, 1.1], "text-anchor": "top", "text-optional": true, visibility: stationVis },
       paint: { "text-color": "#333333", "text-halo-color": "#ffffff", "text-halo-width": 1.5 } });
   }
@@ -726,7 +726,7 @@
   $effect(() => {
     if (!loaded) return;
     const data = app.metro;
-    (map!.getSource("metro") as GeoJSONSource).setData(data ? metroFC(data, app.metroLines, app.metroStation) : EMPTY);
+    (map!.getSource("metro") as GeoJSONSource).setData(data ? metroFC(data, app.metroLines, app.metroStation, locale.language) : EMPTY);
   });
 
   // The trip planner's start (A) and end (B).
@@ -794,7 +794,7 @@
     const line = h ? drawn.find(d => d.id === h.line) : undefined;
     (map!.getSource("highlight") as GeoJSONSource).setData(variantFC(line, h?.variant));
     // No direction focused ("Όλες"): the stops of every direction, not only of the one clicked.
-    (map!.getSource("stops") as GeoJSONSource).setData(stopsFC(line, h?.variant, !!h && !app.focus[h.line]));
+    (map!.getSource("stops") as GeoJSONSource).setData(stopsFC(line, h?.variant, !!h && !app.focus[h.line], locale.language));
   });
 
   // New data of the detailed lines (or a direction focus): hand it to the fleet, line by line.

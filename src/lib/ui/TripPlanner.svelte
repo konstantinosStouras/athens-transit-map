@@ -1,5 +1,6 @@
 <script lang="ts" module>
-  import { t as tr } from "../i18n.svelte";
+  import { displayStop, displayText } from "../transit-names";
+  import { t as tr, locale, nameOf } from "../i18n.svelte";
   import type { Place } from "../trip";
 
   // Kept across close and reopen.
@@ -170,7 +171,7 @@
   const stationAt = (p: Pt) => {
     const st = app.metro && nearestStation(app.metro, p);
     const s = st && app.metro!.stations.find(x => x.name === st.name && x.lines.some(l => l.startsWith("M")));
-    return s ? { name: s.name, d: st.d, pt: [s.lat, s.lon] as Pt } : null;
+    return s ? { name: s.name, name_en: s.name_en, d: st.d, pt: [s.lat, s.lon] as Pt } : null;
   };
   const anyEnd = $derived(to?.kind === "metro-any");
   // Google Maps, on foot to the first stop: from where the phone is, or from the chosen start.
@@ -325,16 +326,16 @@
   const BOT = "oasa_bus_bot";
   const tgLink = $derived(tgPayload && `https://t.me/${BOT}?start=${tgPayload}`);
 
-  const stop = (k: number) => data?.ix.s[k][0] ?? "";
+  const stop = (k: number) => displayStop(data?.ix.s[k], locale.language);
   const metres = (m: number) => (m < 50 ? "δίπλα" : `≈ ${Math.round(m / 50) * 50} μ.`);
   const icon = (p: Place) => ({ area: "◎", stop: "🚏", me: "📍", street: "⌖", poi: "•", metro: "🚇", "metro-any": "🚇" })[p.kind ?? "street"];
   const mins = (m: number) => `≈ ${Math.max(1, Math.round(m))}′`;
   // Where a trip gets off: the stop, and for "any metro station" the station there.
-  const offAt = (k: number) => { const st = anyEnd && data ? stationAt(ptOf(k)) : null; return st ? `${stop(k)} (🚇 ${st.name})` : stop(k); };
+  const offAt = (k: number) => { const st = anyEnd && data ? stationAt(ptOf(k)) : null; return st ? `${stop(k)} (🚇 ${nameOf(st)})` : stop(k); };
   const shown = $derived(aTrips ? Math.min(aTrips.length, MAX_LINES) : 0);
   // Where a result goes: the variants that make the trip. The summary follows the direction shown on the map.
-  const going = (t: TripLine) => (data ? termini(data.ix, t.line, t.variants.map(v => v.id)).join(" · ") : "");
-  const goingNow = (line: string, variants: string[] = []) => (data ? termini(data.ix, line, app.focus[line] ?? variants).join(" · ") : "");
+  const going = (t: TripLine) => (data ? termini(data.ix, t.line, t.variants.map(v => v.id), locale.language).join(" · ") : "");
+  const goingNow = (line: string, variants: string[] = []) => (data ? termini(data.ix, line, app.focus[line] ?? variants, locale.language).join(" · ") : "");
 
   // New results, or the planner opened again: bring the list into view (not while a suggestion list is open).
   let resultsEl: HTMLElement | undefined = $state();
@@ -372,7 +373,7 @@
     <span id="trip-h" class="sr">{tr("Διαδρομή")}</span>
     <div class="row">
       <button type="button" class="summary" aria-expanded="false" onclick={() => (folded = false)}>
-        <b>{tr(from.label)} → {tr(to.label)}</b>
+        <b>{displayText(from.label, from.label_en, locale.language)} → {displayText(to.label, to.label_en, locale.language)}</b>
         <small>{#if trips.length}{tr(trips.length)} {tr(trips.length === 1 ? "γραμμή" : "γραμμές")}{#if trips.length > MAX_LINES} · {tr(MAX_LINES)}{tr(" στον χάρτη")}{/if}{:else if xfers.length}{tr("με μία αλλαγή")}{/if}{#if app.alert} · <Bell label={tr("ειδοποίηση")} />{/if}</small>
         {#if onMap.length || xferLines.length}
           <span class="lines">
@@ -405,7 +406,7 @@
           <i class="dot {f}" aria-hidden="true">{tr(f === "from" ? "A" : "B")}</i>
           <input id="trip-{f}" bind:this={inputs[f]} type="search" autocomplete="off" spellcheck="false" enterkeyhint="search"
             aria-label={tr((f === "from" ? "Από" : "Προς"))} placeholder={tr((f === "from" ? "Από: η θέση μου, στάση, μετρό, διεύθυνση" : "Προς: στάση, μετρό, διεύθυνση, μαγαζί"))}
-            value={e.place?.kind === "me" ? tr(ME) : e.text} class:set={!!e.place}
+            value={e.place?.kind === "me" ? tr(ME) : displayText(e.text, e.place?.label_en, locale.language)} class:set={!!e.place}
             role="combobox" aria-expanded={openField === f} aria-controls="trip-{f}-list" aria-autocomplete="list"
             aria-activedescendant={openField === f && opts[active] ? `trip-${f}-${active}` : undefined}
             onfocus={() => { openField = f; }} oninput={ev => edit(f, ev.currentTarget.value)} onkeydown={ev => onkeydown(f, ev)} />
@@ -419,7 +420,7 @@
                   onpointerdown={ev => ev.preventDefault()} onclick={() => choose(f, o)}>
                   {#if o.me}<span><i aria-hidden="true">📍</i> {tr(ME)}</span>
                   {:else if o.place}
-                    <span><i aria-hidden="true">{tr(icon(o.place))}</i> {tr(o.place.label)}</span>
+                    <span><i aria-hidden="true">{tr(icon(o.place))}</i> {displayText(o.place.label, o.place.label_en, locale.language)}</span>
                     <small>{tr(o.place.kind === "metro-any" ? "η γραμμή που σε πάει πιο γρήγορα σε σταθμό" : o.place.lines.length ? o.place.lines.slice(0, 6).join(" · ") + (o.place.lines.length > 6 ? " …" : "") : o.place.hint ?? "")}</small>
                   {/if}
                 </li>
@@ -441,7 +442,7 @@
     {:else if !data}
       <p class="note">{tr("Φόρτωση στάσεων…")}</p>
     {:else if tooClose}
-      <p class="note">{#if anyEnd && walkTo}{tr("Ο σταθμός ")}{tr(walkTo.name)}{tr(" είναι ")}{tr(metres(walkTo.d))}{tr(": καλύτερα με τα πόδια.")}{:else}{tr("Είναι πολύ κοντά: καλύτερα με τα πόδια.")}{/if}</p>
+      <p class="note">{#if anyEnd && walkTo}{tr("Ο σταθμός ")}{nameOf(walkTo)}{tr(" είναι ")}{tr(metres(walkTo.d))}{tr(": καλύτερα με τα πόδια.")}{:else}{tr("Είναι πολύ κοντά: καλύτερα με τα πόδια.")}{/if}</p>
     {:else if trips && !trips.length && !xfers.length}
       <p class="note">{tr("Καμία γραμμή δεν πάει, ούτε με μία αλλαγή. Δοκίμασε περισσότερο περπάτημα ή κοντινή περιοχή.")}</p>
     {:else if trips}
@@ -452,7 +453,7 @@
           {@const v = t.variants[0]}
           <li class:out={k >= MAX_LINES} class:picked={picked === t.line}>
             <button type="button" class="chip" style:--c={tr(app.lineColor(t.line).bg)} style:--t={tr(app.lineColor(t.line).fg)}
-              aria-pressed={app.selected.includes(t.line)} title={tr((info?.name))}
+              aria-pressed={app.selected.includes(t.line)} title={tr((nameOf(info)))}
               onclick={() => toggleTripLine(app, t)}>{tr(t.line)}</button>
             <button type="button" class="pick" aria-pressed={picked === t.line} title={tr("Μόνο αυτή στον χάρτη, με τις στάσεις της")} onclick={() => solo(t)}>
               <span><b>{tr(mins(t.min))}</b> {tr(stop(v.from))} → {tr(offAt(v.to))}</span>
@@ -507,7 +508,7 @@
             {#if near.length > 1}
               <label>{tr("Στάση\r\n                ")}<select bind:value={boardName}>
                   <option value="">{tr("η κοντινότερη κάθε γραμμής")}</option>
-                  {#each near as b (b.name)}<option value={b.name}>{tr(b.name)} · {tr(metres(b.walk))} · {tr(b.lines.map(l => l.line).join(", "))}</option>{/each}
+                  {#each near as b (b.name)}<option value={b.name}>{nameOf({ name: b.name, name_en: b.name_en })} · {tr(metres(b.walk))} · {tr(b.lines.map(l => l.line).join(", "))}</option>{/each}
                 </select>
               </label>
             {/if}
@@ -567,9 +568,8 @@
 </div>
 
 <style>
-  .trip { min-height: 0; padding: 8px 12px 10px; font-size: 13px;
-    background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
-    backdrop-filter: blur(8px); box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; }
+  .trip { min-height: 0; padding: 4px 0 0; font-size: 13px;
+    background: transparent; border: 0; border-radius: 0; box-shadow: none; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; }
   .sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .row { display: flex; align-items: center; gap: 4px; }
   h3 { flex: 1; margin: 0; font-size: 14px; }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t as tr } from "../i18n.svelte";
+  import { t as tr, nameOf } from "../i18n.svelte";
   import { tick, type Snippet } from "svelte";
   import { searchLines } from "../search";
   import { MAX_LINES } from "../selection";
@@ -99,7 +99,7 @@
             class="chip"
             style:--c={tr(app.lineColor(id).bg)}
             style:--t={tr(app.lineColor(id).fg)}
-            title={tr((st?.title ?? info?.name))}
+            title={tr((st?.title ?? nameOf(info)))}
             aria-label={tr("Αφαίρεση γραμμής " + (id))}
             onclick={() => app.toggleLine(id)}
           >
@@ -185,7 +185,7 @@
           onclick={() => pick(l.id)}
         >
           <span class="id" style:--c={tr(app.lineColor(l.id).bg)} style:--t={tr(app.lineColor(l.id).fg)}>{tr(l.id)}</span>
-          <span class="name">{tr(l.name)}</span>
+          <span class="name">{nameOf(l)}</span>
           {#if sel}<span class="check" aria-hidden="true">✓</span>{/if}
           <button type="button" class="star" class:on={star} tabindex="-1" aria-pressed={star}
             aria-label={tr((star ? 'Αφαίρεση από' : 'Προσθήκη στις') + " αγαπημένες: " + (l.id))} title={tr("Αγαπημένη (πλήκτρο *)")}

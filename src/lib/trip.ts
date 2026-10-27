@@ -1,3 +1,5 @@
+import { displayStop } from "./transit-names";
+import type { Language } from "./translate";
 // Trip planner: which lines go from one place to another, with no change or one. Loaded with the planner
 // only (dynamic import), as is public/trips.json, its stop index (scripts/trips.ts).
 
@@ -8,11 +10,11 @@ import type { AppState } from "./state.svelte";
 export type Pt = [number, number];   // [lat, lon]
 
 // s: every stop [name, lat, lon]; l: line → variant → its stops, as indexes into s.
-export interface TripIndex { v: string; s: [string, number, number][]; l: Record<string, Record<string, number[]>> }
+export interface TripIndex { v: string; s: [string, number, number, string?][]; l: Record<string, Record<string, number[]>> }
 
 // A place to start or end at: stops of one name close together, an area or street (geocoder), or the
 // user's location.
-export interface Place { label: string; hint?: string; pts: Pt[]; lines: string[]; kind?: "stop" | "area" | "street" | "poi" | "me" | "metro" | "metro-any" }
+export interface Place { label: string; label_en?: string; hint?: string; pts: Pt[]; lines: string[]; kind?: "stop" | "area" | "street" | "poi" | "me" | "metro" | "metro-any" }
 
 export interface TripVariant {
   id: string;
@@ -52,20 +54,20 @@ export function places(ix: TripIndex): Place[] {
   const order = ix.s.map((_, k) => k).sort((a, b) => ix.s[a][1] - ix.s[b][1] || ix.s[a][2] - ix.s[b][2] || a - b);
   const groups = new Map<string, { seed: Pt; place: Place; lines: Set<string> }[]>();
   for (const k of order) {
-    const [name, lat, lon] = ix.s[k];
+    const [name, lat, lon, name_en] = ix.s[k];
     const p: Pt = [lat, lon];
     const key = fold(name);
     const list = groups.get(key) ?? [];
     groups.set(key, list);
     let g = list.find(x => distM(x.seed, p) <= CLUSTER_M);
-    if (!g) list.push((g = { seed: p, place: { label: name, pts: [], lines: [], kind: "stop" }, lines: new Set() }));
+    if (!g) list.push((g = { seed: p, place: { label: name, ...(name_en?.trim() ? { label_en: name_en } : {}), pts: [], lines: [], kind: "stop" }, lines: new Set() }));
     g.place.pts.push(p);
     for (const l of lines[k]) g.lines.add(l);
   }
   return [...groups.values()].flat().map(g => ({ ...g.place, lines: [...g.lines].sort(byLine) }));
 }
 
-const folded = new WeakMap<Place, string>();
+const folded = new WeakMap<Place, string[]>();
 const isWordChar = (c: string | undefined) => !!c && /[\p{L}\p{N}]/u.test(c);
 
 // Places whose name has the text at a word start ("ταυρ" is not in ΔΙΑΣΤΑΥΡΩΣΗ); whole name first,
@@ -74,13 +76,16 @@ export function searchPlaces(list: Place[], query: string, max = 6): Place[] {
   const q = fold(query.trim());
   if (!q) return [];
   const rank = (p: Place) => {
-    let f = folded.get(p);
-    if (f == null) folded.set(p, (f = fold(p.label)));
-    if (f === q) return 0;
-    for (let at = f.indexOf(q); at >= 0; at = f.indexOf(q, at + 1))
-      if (at === 0) return 1;
-      else if (!isWordChar(f[at - 1])) return 2;
-    return -1;
+    let names = folded.get(p);
+    if (!names) folded.set(p, (names = [p.label, p.label_en].filter((n): n is string => !!n).map(fold)));
+    const scores = names.map(f => {
+      if (f === q) return 0;
+      for (let at = f.indexOf(q); at >= 0; at = f.indexOf(q, at + 1))
+        if (at === 0) return 1;
+        else if (!isWordChar(f[at - 1])) return 2;
+      return -1;
+    }).filter(r => r >= 0);
+    return scores.length ? Math.min(...scores) : -1;
   };
   return list.map(p => [rank(p), p] as const).filter(([r]) => r >= 0)
     .sort((a, b) => a[0] - b[0] || +(b[1].kind === "metro") - +(a[1].kind === "metro") || b[1].lines.length - a[1].lines.length || a[1].label.localeCompare(b[1].label, "el"))
@@ -255,7 +260,7 @@ export function findTransfers(ix: TripIndex, from: Pt[], to: Pt[], radius = WALK
 // lines that stop there and still reach the end (per variant, the occurrence with the least walking,
 // then the fewest stops, as in findTrips).
 export interface BoardAt { id: string; i: number; from: number }
-export interface Boarding { name: string; walk: number; lines: { line: string; variants: BoardAt[] }[] }
+export interface Boarding { name: string; name_en?: string; walk: number; lines: { line: string; variants: BoardAt[] }[] }
 
 export function boardings(ix: TripIndex, from: Pt[], to: Pt[], radius: number, lines: string[], max = 4): Boarding[] {
   const near = (pts: Pt[], k: number) => nearest([ix.s[k][1], ix.s[k][2]], pts);
@@ -275,7 +280,7 @@ export function boardings(ix: TripIndex, from: Pt[], to: Pt[], radius: number, l
       }
       for (const [key, { at, a }] of best) {
         let g = out.get(key);
-        if (!g) out.set(key, (g = { name: ix.s[at.from][0], walk: a, lines: [] }));
+        if (!g) out.set(key, (g = { name: ix.s[at.from][0], ...(ix.s[at.from][3] ? { name_en: ix.s[at.from][3] } : {}), walk: a, lines: [] }));
         g.walk = Math.min(g.walk, a);
         const l = g.lines.find(x => x.line === line);
         if (l) l.variants.push(at);
@@ -294,11 +299,11 @@ export function alertTargets(trips: TripLine[], onMap: string[], at: Boarding | 
 }
 
 // Where the given variants of a line end (the stop names), once each: the way the line goes.
-export function termini(ix: TripIndex, line: string, variantIds: string[]): string[] {
+export function termini(ix: TripIndex, line: string, variantIds: string[], language: Language = "el"): string[] {
   const out: string[] = [];
   for (const id of variantIds) {
     const k = ix.l[line]?.[id]?.at(-1);
-    const name = k == null ? undefined : ix.s[k]?.[0];
+    const name = k == null ? undefined : displayStop(ix.s[k], language);
     if (name && !out.includes(name)) out.push(name);
   }
   return out;
@@ -314,7 +319,7 @@ export function toggleTripLine(app: AppState, t: TripLine) {
 // Metro, ISAP and tram stations as places to start or end at, with their lines; one place for the
 // nearest metro or ISAP station of all (the caller picks by the point it compares).
 export function metroPlaces(data: MetroData): Place[] {
-  return data.stations.map(s => ({ label: s.name, pts: [[s.lat, s.lon]] as Pt[], lines: s.lines, kind: "metro" as const }));
+  return data.stations.map(s => ({ label: s.name, ...(s.name_en?.trim() ? { label_en: s.name_en } : {}), pts: [[s.lat, s.lon]] as Pt[], lines: s.lines, kind: "metro" as const }));
 }
 const isMetro = (s: MetroData["stations"][number]) => s.lines.some(l => l.startsWith("M"));
 export function anyMetro(data: MetroData): Place {
