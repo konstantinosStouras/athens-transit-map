@@ -1,5 +1,6 @@
 // Greek UI text and its English equivalent. Transit place names are supplied by the data feed.
 export const english: Record<string, string> = {
+  "Σχόλια μέχρι σήμερα ↗": "Feedback received so far ↗",
   "(not used)": "",
   "(όχι ακόμα διαθέσιμο)": "(not available yet)",
   ", αλλαγή:": ", transfer:",

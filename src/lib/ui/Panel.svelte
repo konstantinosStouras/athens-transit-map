@@ -113,6 +113,7 @@
     <button type="button" lang="en" aria-label="English" aria-pressed={locale.language === "en"} onclick={() => setLanguage("en")}>EN</button>
   </div>
   <div class="brand"><span>{tr("ΟΑΣΑ · Live")}</span><a href={`${import.meta.env.BASE_URL}updates.html?lang=${locale.language}`}>{tr("Τι νέο υπάρχει ↗")}</a></div>
+  <a class="feedback-link" href={`${import.meta.env.BASE_URL}feedback.html?lang=${locale.language}`}>{tr("Σχόλια μέχρι σήμερα ↗")}</a>
   <h1 class="sr">{tr("Λεωφορεία ΟΑΣΑ")}</h1>
   <nav class="primary" aria-label={tr("Βασικές ενέργειες")}>
     <button type="button" aria-pressed={pop !== "trip"} onclick={() => { pop = null; collapsed = false; searching = true; void tick().then(() => document.querySelector<HTMLInputElement>(".picker input")?.focus()); }}>{tr("⌕ Βρες γραμμή")}</button>
@@ -360,6 +361,7 @@
 
   .brand { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 12px; font-weight: 750; }
   .brand a { font-size: 12px; color: var(--accent); font-weight: 500; padding: 6px 0; }
+  .feedback-link { display: block; width: fit-content; margin: -8px 0 8px; padding: 8px 0; color: var(--accent); font-size: 12px; }
   .primary { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
   .primary button { min-height: 46px; border-radius: 10px; border: 1px solid var(--border); background: var(--control); cursor: pointer; font-size: 13px; font-weight: 600; }
   .primary button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: white; }
