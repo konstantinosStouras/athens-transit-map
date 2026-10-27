@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr } from "../i18n.svelte";
   import { bannerMessages } from "../banner";
   import { DEMO_VIDEO_URL } from "../config";
   import { STALE_S, type AppState } from "../state.svelte";
@@ -13,9 +14,9 @@
 
 {#if messages.length || app.notice}
   <div class="warn" role="status">
-    {#if app.notice}<p>{app.notice}</p>{/if}
-    {#each messages as m (m)}<p>{m}</p>{/each}
-    {#if offline && DEMO_VIDEO_URL}<p><a href={DEMO_VIDEO_URL} target="_blank" rel="noopener">Δες πώς δουλεύει</a></p>{/if}
+    {#if app.notice}<p>{tr(app.notice)}</p>{/if}
+    {#each messages as m (m)}<p>{tr(m)}</p>{/each}
+    {#if offline && DEMO_VIDEO_URL}<p><a href={DEMO_VIDEO_URL} target="_blank" rel="noopener">{tr("Δες πώς δουλεύει")}</a></p>{/if}
   </div>
 {/if}
 

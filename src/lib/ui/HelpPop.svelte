@@ -1,36 +1,35 @@
 <script lang="ts">
+  import { t as tr } from "../i18n.svelte";
   // What each symbol on the map shows and what a tap on it does. Static: the samples are drawn like the real
   // ones (the vehicle classes are in app.css) and are not interactive.
   import { PALETTE } from "../lineColors";
 </script>
 
 <ul>
-  <li><span class="s"><span class="bus late1" style:--c={PALETTE[0].bg} style:--t={PALETTE[0].fg}>040</span></span>
-    <span>Όχημα γραμμής που ακολουθείς. Κάθε γραμμή έχει δικό της χρώμα, ίδιο στη διαδρομή και στο κουμπί της.
-      Το δαχτυλίδι γύρω του είναι η καθυστέρηση. Πάτα το για τις λεπτομέρειες.</span></li>
+  <li><span class="s"><span class="bus late1" style:--c={tr(PALETTE[0].bg)} style:--t={tr(PALETTE[0].fg)}>040</span></span>
+    <span>{tr("Όχημα γραμμής που ακολουθείς. Κάθε γραμμή έχει δικό της χρώμα, ίδιο στη διαδρομή και στο κουμπί της.\r\n      Το δαχτυλίδι γύρω του είναι η καθυστέρηση. Πάτα το για τις λεπτομέρειες.")}</span></li>
   <li><span class="s"><i class="dot ontime"></i><i class="dot late1"></i><i class="dot late3"></i></span>
-    <span>Όχημα της πόλης: το χρώμα του είναι η καθυστέρηση. Πράσινο στην ώρα του, κίτρινο, πορτοκαλί, κόκκινο όλο και
-      πιο αργά, γκρι χωρίς δρομολόγιο. Πάτα το για να δεις ολόκληρη τη γραμμή του.</span></li>
-  <li><span class="s"><span class="bus ontime" style:--c={PALETTE[1].bg} style:--t={PALETTE[1].fg}>550<i class="dir" style="transform: translate(24px, 0) rotate(90deg)"></i></span></span>
-    <span>Το βελάκι δείχνει προς πού κινείται. Λείπει όταν το όχημα στέκεται.</span></li>
+    <span>{tr("Όχημα της πόλης: το χρώμα του είναι η καθυστέρηση. Πράσινο στην ώρα του, κίτρινο, πορτοκαλί, κόκκινο όλο και\r\n      πιο αργά, γκρι χωρίς δρομολόγιο. Πάτα το για να δεις ολόκληρη τη γραμμή του.")}</span></li>
+  <li><span class="s"><span class="bus ontime" style:--c={tr(PALETTE[1].bg)} style:--t={tr(PALETTE[1].fg)}>550<i class="dir" style="transform: translate(24px, 0) rotate(90deg)"></i></span></span>
+    <span>{tr("Το βελάκι δείχνει προς πού κινείται. Λείπει όταν το όχημα στέκεται.")}</span></li>
   <li><span class="s"><span class="age">24″</span></span>
-    <span>Πριν από τόσο ήρθε η τελευταία θέση GPS του οχήματος.</span></li>
-  <li><span class="s"><span class="bus none stale" style:--c={PALETTE[2].bg} style:--t={PALETTE[2].fg}>2</span></span>
-    <span>Αχνό: δεν έστειλε θέση για πάνω από 1½ λεπτό. Η πραγματική θέση του μπορεί να είναι αλλού.</span></li>
+    <span>{tr("Πριν από τόσο ήρθε η τελευταία θέση GPS του οχήματος.")}</span></li>
+  <li><span class="s"><span class="bus none stale" style:--c={tr(PALETTE[2].bg)} style:--t={tr(PALETTE[2].fg)}>2</span></span>
+    <span>{tr("Αχνό: δεν έστειλε θέση για πάνω από 1½ λεπτό. Η πραγματική θέση του μπορεί να είναι αλλού.")}</span></li>
   <li><span class="s"><i class="trail"></i></span>
-    <span>Μπλε ίχνος: η νέα θέση ήταν πιο μπροστά· το όχημα πήγε ως εκεί και άφησε το δρόμο που έκανε.</span></li>
+    <span>{tr("Μπλε ίχνος: η νέα θέση ήταν πιο μπροστά· το όχημα πήγε ως εκεί και άφησε το δρόμο που έκανε.")}</span></li>
   <li><span class="s"><i class="trail back"></i></span>
-    <span>Γκρι διακεκομμένο ίχνος: η νέα θέση ήταν πιο πίσω. Διόρθωση θέσης, όχι όπισθεν· το όχημα είναι αχνό όσο γυρίζει.</span></li>
+    <span>{tr("Γκρι διακεκομμένο ίχνος: η νέα θέση ήταν πιο πίσω. Διόρθωση θέσης, όχι όπισθεν· το όχημα είναι αχνό όσο γυρίζει.")}</span></li>
   <li><span class="s"><i class="route"></i></span>
-    <span>Διαδρομή. Τα βέλη δείχνουν την κατεύθυνση. Πάτα τη για τις στάσεις της.</span></li>
+    <span>{tr("Διαδρομή. Τα βέλη δείχνουν την κατεύθυνση. Πάτα τη για τις στάσεις της.")}</span></li>
   <li><span class="s"><i class="stop"></i></span>
-    <span>Στάση της γραμμής που διάλεξες. Πάτα την για το όνομά της.</span></li>
+    <span>{tr("Στάση της γραμμής που διάλεξες. Πάτα την για το όνομά της.")}</span></li>
   <li><span class="s"><i class="station"></i></span>
-    <span>Σταθμός μετρό, ΗΣΑΠ ή τραμ. Πάτα τον για τις γραμμές του.</span></li>
+    <span>{tr("Σταθμός μετρό, ΗΣΑΠ ή τραμ. Πάτα τον για τις γραμμές του.")}</span></li>
   <li><span class="s"><span class="me"><b></b></span></span>
-    <span>Η θέση σου, από το κουμπί του στόχου στον χάρτη.</span></li>
+    <span>{tr("Η θέση σου, από το κουμπί του στόχου στον χάρτη.")}</span></li>
   <li><span class="s"><i class="empty">×</i></span>
-    <span>Πάτα σε κενό σημείο του χάρτη για να ξαναδείς όλα τα οχήματα.</span></li>
+    <span>{tr("Πάτα σε κενό σημείο του χάρτη για να ξαναδείς όλα τα οχήματα.")}</span></li>
 </ul>
 
 <style>

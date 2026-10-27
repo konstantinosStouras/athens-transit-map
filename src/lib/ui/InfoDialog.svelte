@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr } from "../i18n.svelte";
   import { dayMonth } from "../format";
   import { GTFS_PAGE } from "../sources";
   import SourcesView from "./SourcesView.svelte";
@@ -51,25 +52,22 @@
   onkeydown={e => { if (e.key === "Escape") e.stopPropagation(); }}>
   <div class="body">
     <header>
-      <h2 id="info-title">Πληροφορίες</h2>
-      <button type="button" class="close" aria-label="Κλείσιμο" onclick={() => (open = false)}>
+      <h2 id="info-title">{tr("Πληροφορίες")}</h2>
+      <button type="button" class="close" aria-label={tr("Κλείσιμο")} onclick={() => (open = false)}>
         <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
       </button>
     </header>
 
     {#if ended}
       <div class="old">
-        <b>Το πρόγραμμα του ΟΑΣΑ έληξε στις {dayMonth(ended)}.</b> Ο ΟΑΣΑ δεν έχει δημοσιεύσει ακόμα νέο πρόγραμμα
-        δρομολογίων (GTFS), οπότε ο χάρτης χρησιμοποιεί το τελευταίο. Οι θέσεις των οχημάτων είναι ζωντανές· οι
-        καθυστερήσεις και τα δρομολόγια βγαίνουν από το παλιό πρόγραμμα, άρα είναι κατά προσέγγιση. Μόλις βγει νέο,
-        ο χάρτης το παίρνει αυτόματα. <a href={GTFS_PAGE} target="_blank" rel="noopener">Το αρχείο στο data.gov.gr</a>
+        <b>{tr("Το πρόγραμμα του ΟΑΣΑ έληξε στις ")}{tr(dayMonth(ended))}.</b>{tr(" Ο ΟΑΣΑ δεν έχει δημοσιεύσει ακόμα νέο πρόγραμμα\r\n        δρομολογίων (GTFS), οπότε ο χάρτης χρησιμοποιεί το τελευταίο. Οι θέσεις των οχημάτων είναι ζωντανές· οι\r\n        καθυστερήσεις και τα δρομολόγια βγαίνουν από το παλιό πρόγραμμα, άρα είναι κατά προσέγγιση. Μόλις βγει νέο,\r\n        ο χάρτης το παίρνει αυτόματα. ")}<a href={GTFS_PAGE} target="_blank" rel="noopener">{tr("Το αρχείο στο data.gov.gr")}</a>
       </div>
     {/if}
 
-    <div class="tabs" role="tablist" aria-label="Πληροφορίες">
+    <div class="tabs" role="tablist" aria-label={tr("Πληροφορίες")}>
       {#each TABS as t (t.id)}
         <button type="button" role="tab" id="info-tab-{t.id}" aria-controls="info-panel-{t.id}" aria-selected={tab === t.id}
-          tabindex={tab === t.id ? 0 : -1} onclick={() => (tab = t.id)} onkeydown={onTabKey}>{t.label}</button>
+          tabindex={tab === t.id ? 0 : -1} onclick={() => (tab = t.id)} onkeydown={onTabKey}>{tr(t.label)}</button>
       {/each}
     </div>
 
@@ -77,10 +75,10 @@
       <SourcesView {motion} />
     </div>
     <div role="tabpanel" id="info-panel-stats" aria-labelledby="info-tab-stats" hidden={tab !== "stats"}>
-      <div class="tabs sub" role="tablist" aria-label="Στατιστικά">
+      <div class="tabs sub" role="tablist" aria-label={tr("Στατιστικά")}>
         {#each SUBS as t (t.id)}
           <button type="button" role="tab" id="stats-tab-{t.id}" aria-controls="stats-panel-{t.id}" aria-selected={sub === t.id}
-            tabindex={sub === t.id ? 0 : -1} onclick={() => (sub = t.id)} onkeydown={onSubKey}>{t.label}</button>
+            tabindex={sub === t.id ? 0 : -1} onclick={() => (sub = t.id)} onkeydown={onSubKey}>{tr(t.label)}</button>
         {/each}
       </div>
       <div role="tabpanel" id="stats-panel-day" aria-labelledby="stats-tab-day" hidden={sub !== "day"}>

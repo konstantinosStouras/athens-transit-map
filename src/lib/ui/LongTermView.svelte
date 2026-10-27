@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr, locale } from "../i18n.svelte";
   import { untrack } from "svelte";
   import { byDayType, DATA_URL, hourBand, lineTrends, LONG_DAYS, MIN_LINE_HOURS, storedDays, type Stored } from "../stats";
   import HourChart from "./HourChart.svelte";
@@ -22,11 +23,11 @@
     return () => (gone = true);
   });
 
-  const nf = (n: number) => Math.round(n).toLocaleString("el-GR");
-  const dec = (n: number) => n.toLocaleString("el-GR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const nf = (n: number) => Math.round(n).toLocaleString(locale.language === "en" ? "en-GB" : "el-GR");
+  const dec = (n: number) => n.toLocaleString(locale.language === "en" ? "en-GB" : "el-GR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const pct = (c: number) => `${c > 0 ? "+" : "−"}${Math.abs(Math.round(c * 100))}%`;
   const hh = (h: number) => `${String(h % 24).padStart(2, "0")}:00`;
-  const dm = (date: string, weekday = false) => new Date(`${date}T12:00:00Z`).toLocaleDateString("el-GR",
+  const dm = (date: string, weekday = false) => new Date(`${date}T12:00:00Z`).toLocaleDateString(locale.language === "en" ? "en-GB" : "el-GR",
     { ...(weekday ? { weekday: "long" } : {}), day: "numeric", month: "long", timeZone: "UTC" });
   const kmhText = (v: number | null) => (v == null ? "χωρίς δεδομένα" : `${dec(v)} km/h`);
 
@@ -59,69 +60,67 @@
 </script>
 
 {#if data.kind === "loading"}
-  <p class="muted">Φόρτωση…</p>
+  <p class="muted">{tr("Φόρτωση…")}</p>
 {:else if data.kind === "error"}
-  <p class="muted">Οι προηγούμενες μέρες δεν φόρτωσαν.</p>
-  <button type="button" class="retry" onclick={load}>Δοκίμασε ξανά</button>
+  <p class="muted">{tr("Οι προηγούμενες μέρες δεν φόρτωσαν.")}</p>
+  <button type="button" class="retry" onclick={load}>{tr("Δοκίμασε ξανά")}</button>
 {:else if !stored || days.length < MIN_DAYS}
-  <p class="muted">Λίγες μέρες ακόμα: {days.length} πλήρεις. Τα μακροχρόνια γραφήματα χρειάζονται τουλάχιστον {MIN_DAYS}.</p>
+  <p class="muted">{tr("Λίγες μέρες ακόμα: ")}{tr(days.length)}{tr(" πλήρεις. Τα μακροχρόνια γραφήματα χρειάζονται τουλάχιστον ")}{tr(MIN_DAYS)}.</p>
 {:else}
-  <p class="lede">{days.length} πλήρεις μέρες, {dm(days[0].date)} – {dm(days.at(-1)!.date)}: {weekday} καθημερινές και {weekend} {weekend === 1 ? "μέρα" : "μέρες"} Σαββατοκύριακου.
-    {#if stored.partial || stored.bad}<br /><span class="warn">Εκτός:
-      {#if stored.partial}{stored.partial} {stored.partial === 1 ? "μερική μέρα" : "μερικές μέρες"}{/if}{#if stored.partial && stored.bad}, {/if}{#if stored.bad}{stored.bad} {stored.bad === 1 ? "αρχείο" : "αρχεία"} που δεν διαβάστηκαν{/if}.</span>{/if}</p>
+  <p class="lede">{tr(days.length)}{tr(" πλήρεις μέρες, ")}{tr(dm(days[0].date))} – {tr(dm(days.at(-1)!.date))}: {tr(weekday)}{tr(" καθημερινές και ")}{tr(weekend)} {tr(weekend === 1 ? "μέρα" : "μέρες")}{tr(" Σαββατοκύριακου.\r\n    ")}{#if stored.partial || stored.bad}<br /><span class="warn">{tr("Εκτός:\r\n      ")}{#if stored.partial}{tr(stored.partial)} {tr(stored.partial === 1 ? "μερική μέρα" : "μερικές μέρες")}{/if}{#if stored.partial && stored.bad}, {/if}{#if stored.bad}{tr(stored.bad)} {tr(stored.bad === 1 ? "αρχείο" : "αρχεία")}{tr(" που δεν διαβάστηκαν")}{/if}.</span>{/if}</p>
 
   <section bind:clientWidth={measured}>
-    <h3>Ταχύτητα ανά ώρα, όλες οι μέρες</h3>
-    <p class="read" aria-live="polite">{bandText(selBand ?? slowest)}</p>
-    <HourChart {w} label="Μέση ταχύτητα ανά ώρα με εύρος ημερών" step={10} start={slowest} bind:sel={selBand}
+    <h3>{tr("Ταχύτητα ανά ώρα, όλες οι μέρες")}</h3>
+    <p class="read" aria-live="polite">{tr(bandText(selBand ?? slowest))}</p>
+    <HourChart {w} label={tr("Μέση ταχύτητα ανά ώρα με εύρος ημερών")} step={10} start={slowest} bind:sel={selBand}
       series={[{ values: band.map(b => b.kmh), cls: "" }]} band={{ min: band.map(b => b.min), max: band.map(b => b.max) }} valuetext={bandText} />
-    <p class="note">Η γραμμή: km/h όλων των ημερών μαζί (απόσταση προς χρόνο). Η σκιά: από την πιο αργή έως την πιο γρήγορη μέρα σε κάθε ώρα.</p>
+    <p class="note">{tr("Η γραμμή: km/h όλων των ημερών μαζί (απόσταση προς χρόνο). Η σκιά: από την πιο αργή έως την πιο γρήγορη μέρα σε κάθε ώρα.")}</p>
   </section>
 
   <section>
-    <h3>Καθημερινές και Σαββατοκύριακα</h3>
-    <p class="legend"><span><i class="key"></i>Δευτέρα–Παρασκευή ({weekday} {weekday === 1 ? "μέρα" : "μέρες"})</span>
-      {#if weekend}<span><i class="key alt"></i>Σάββατο–Κυριακή ({weekend} {weekend === 1 ? "μέρα" : "μέρες"})</span>{/if}</p>
-    <h4>Οχήματα στον δρόμο</h4>
-    <p class="read" aria-live="polite">{vehText(selVeh ?? peak)}</p>
-    <HourChart {w} label="Οχήματα ανά ώρα, καθημερινές και Σαββατοκύριακα" step={250} start={peak} bind:sel={selVeh}
+    <h3>{tr("Καθημερινές και Σαββατοκύριακα")}</h3>
+    <p class="legend"><span><i class="key"></i>{tr("Δευτέρα–Παρασκευή (")}{tr(weekday)} {tr(weekday === 1 ? "μέρα" : "μέρες")})</span>
+      {#if weekend}<span><i class="key alt"></i>{tr("Σάββατο–Κυριακή (")}{tr(weekend)} {tr(weekend === 1 ? "μέρα" : "μέρες")})</span>{/if}</p>
+    <h4>{tr("Οχήματα στον δρόμο")}</h4>
+    <p class="read" aria-live="polite">{tr(vehText(selVeh ?? peak))}</p>
+    <HourChart {w} label={tr("Οχήματα ανά ώρα, καθημερινές και Σαββατοκύριακα")} step={250} start={peak} bind:sel={selVeh}
       series={series("vehicles")} valuetext={vehText} />
-    <h4>Μέση ταχύτητα</h4>
-    <p class="read" aria-live="polite">{spdText(selSpd ?? slowest)}</p>
-    <HourChart {w} label="Μέση ταχύτητα ανά ώρα, καθημερινές και Σαββατοκύριακα" step={10} start={slowest} bind:sel={selSpd}
+    <h4>{tr("Μέση ταχύτητα")}</h4>
+    <p class="read" aria-live="polite">{tr(spdText(selSpd ?? slowest))}</p>
+    <HourChart {w} label={tr("Μέση ταχύτητα ανά ώρα, καθημερινές και Σαββατοκύριακα")} step={10} start={slowest} bind:sel={selSpd}
       series={series("kmh")} valuetext={spdText} />
-    <p class="note">Οχήματα: μέσος όρος των ημερών. Ταχύτητα: όλες οι μέρες κάθε ομάδας μαζί. Οι αργίες μετράνε στην ημέρα της εβδομάδας τους.</p>
+    <p class="note">{tr("Οχήματα: μέσος όρος των ημερών. Ταχύτητα: όλες οι μέρες κάθε ομάδας μαζί. Οι αργίες μετράνε στην ημέρα της εβδομάδας τους.")}</p>
   </section>
 
   <section>
-    <h3>Γραμμές που άλλαξαν</h3>
+    <h3>{tr("Γραμμές που άλλαξαν")}</h3>
     {#if trends && trends.eligible}
-      <p class="read">{dm(trends.date, true)} σε σχέση με {trends.baseDays} προηγούμενες {trends.weekend ? "μέρες Σαββατοκύριακου" : "καθημερινές"}</p>
+      <p class="read">{tr(dm(trends.date, true))}{tr(" σε σχέση με ")}{tr(trends.baseDays)}{tr(" προηγούμενες ")}{tr(trends.weekend ? "μέρες Σαββατοκύριακου" : "καθημερινές")}</p>
       <div class="rank">
         {#each [["Πιο αργά", trends.slower], ["Πιο γρήγορα", trends.faster]] as const as [title, rows] (title)}
           <div>
-            <h4>{title}</h4>
+            <h4>{tr(title)}</h4>
             {#if rows.length}
               <ol>
                 {#each rows as t (t.line)}
-                  <li title="{t.line}: {dec(t.base)} → {dec(t.kmh)} km/h ({pct(t.change)})">
-                    <b>{t.line}</b><span class="v">{dec(t.base)} → {dec(t.kmh)}</span>
-                    <span class="track"><span class:up={t.change > 0} style:width="{(Math.abs(t.change) / maxPct) * 100}%"></span></span>
-                    <span class="p">{pct(t.change)}</span>
+                  <li title={tr((t.line) + ": " + (dec(t.base)) + " → " + (dec(t.kmh)) + " km/h (" + (pct(t.change)) + ")")}>
+                    <b>{tr(t.line)}</b><span class="v">{tr(dec(t.base))} → {tr(dec(t.kmh))}</span>
+                    <span class="track"><span class:up={t.change > 0} style:width="{tr((Math.abs(t.change) / maxPct) * 100)}%"></span></span>
+                    <span class="p">{tr(pct(t.change))}</span>
                   </li>
                 {/each}
               </ol>
-            {:else}<p class="muted small">Καμία.</p>{/if}
+            {:else}<p class="muted small">{tr("Καμία.")}</p>{/if}
           </div>
         {/each}
       </div>
-      <p class="note">km/h της τελευταίας μέρας και των προηγούμενων ίδιου τύπου μαζί. Μόνο γραμμές με τουλάχιστον {MIN_LINE_HOURS} ώρες κίνησης οχημάτων και στις δύο ({trends.eligible} γραμμές).</p>
+      <p class="note">{tr("km/h της τελευταίας μέρας και των προηγούμενων ίδιου τύπου μαζί. Μόνο γραμμές με τουλάχιστον ")}{tr(MIN_LINE_HOURS)}{tr(" ώρες κίνησης οχημάτων και στις δύο (")}{tr(trends.eligible)}{tr(" γραμμές).")}</p>
     {:else}
-      <p class="muted">Χρειάζονται τουλάχιστον 2 προηγούμενες πλήρεις μέρες ίδιου τύπου με την τελευταία ({days.at(-1) && dm(days.at(-1)!.date, true)}).</p>
+      <p class="muted">{tr("Χρειάζονται τουλάχιστον 2 προηγούμενες πλήρεις μέρες ίδιου τύπου με την τελευταία (")}{tr(days.at(-1) && dm(days.at(-1)!.date, true))}).</p>
     {/if}
   </section>
 
-  <p class="foot"><a href={DATA_URL} target="_blank" rel="noopener">Δες τα δεδομένα</a> · έως {LONG_DAYS} τελευταίες μέρες, μόνο πλήρεις</p>
+  <p class="foot"><a href={DATA_URL} target="_blank" rel="noopener">{tr("Δες τα δεδομένα")}</a>{tr(" · έως ")}{tr(LONG_DAYS)}{tr(" τελευταίες μέρες, μόνο πλήρεις")}</p>
 {/if}
 
 <style>

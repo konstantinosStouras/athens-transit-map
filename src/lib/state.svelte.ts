@@ -546,7 +546,7 @@ export class AppState {
   }
 
   private writeUrl() {
-    history.replaceState(history.state, "", location.pathname + serializeSelection(this.selected) + location.hash);
+    history.replaceState(history.state, "", location.pathname + serializeSelection(this.selected, new URLSearchParams(location.search).get("lang")) + location.hash);
   }
 
   private startLine(id: string) {

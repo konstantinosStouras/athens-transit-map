@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr } from "../i18n.svelte";
   import { Map as MlMap, Marker, NavigationControl, Popup, setWorkerUrl, type ExpressionSpecification, type GeoJSONSource } from "maplibre-gl";
   import "maplibre-gl/dist/maplibre-gl.css";
   import workerUrl from "virtual:maplibre-worker";
@@ -511,7 +512,8 @@
     const age = document.createElement("span");
     age.className = "age";
     el.append(num, dir);
-    el.setAttribute("aria-label", `Γραμμή ${e.line}, όχημα ${e.id}`);
+    el.dataset.vehicleLabel = `Γραμμή ${e.line}, όχημα ${e.id}`;
+    el.setAttribute("aria-label", tr(el.dataset.vehicleLabel));
     // The marker element only positions; the visible pill is the child. The age label is beside the
     // pill, not in it: a stale pill is faint, its age stays readable.
     const wrap = document.createElement("div");
@@ -567,8 +569,8 @@
     // credits. Capture + stopImmediatePropagation: MapLibre's own click handler must not run.
     const credit = node.querySelector<HTMLElement>(".maplibregl-ctrl-attrib-button");
     if (credit) {
-      credit.title = "Πηγές δεδομένων";
-      credit.setAttribute("aria-label", "Πηγές δεδομένων");
+      credit.title = untrack(() => tr("Πηγές δεδομένων"));
+      credit.setAttribute("aria-label", untrack(() => tr("Πηγές δεδομένων")));
       credit.setAttribute("aria-haspopup", "dialog");
       credit.addEventListener("click", e => { e.preventDefault(); e.stopImmediatePropagation(); void openInfo(); }, true);
     }
@@ -679,7 +681,7 @@
   function segInfo(p: Record<string, unknown>, kmh: (v: unknown) => string) {
     const el = document.createElement("div");
     el.className = "segpop";
-    const line = (text: string, tag = "div") => el.appendChild(Object.assign(document.createElement(tag), { textContent: text }));
+    const line = (text: string, tag = "div") => el.appendChild(Object.assign(document.createElement(tag), { textContent: tr(text) }));
     line(`${kmh(p.kmh)} km/h`, "b");
     line(`${p.from} → ${p.to}`);
     line(`Αιχμή καθημερινής ${kmh(p.peak)} · εκτός ${kmh(p.off)} km/h`);
@@ -851,11 +853,23 @@
     const s = locState, f = follow;
     locateBtn.dataset.state = s === "on" && f ? "follow" : s;
     const label = s === "off" || s === "denied" ? "Η θέση μου" : f ? "Σταμάτα να δείχνεις τη θέση μου" : "Ακολούθησε τη θέση μου";
-    locateBtn.title = label;
-    locateBtn.setAttribute("aria-label", label);
+    locateBtn.title = tr(label);
+    locateBtn.setAttribute("aria-label", tr(label));
     locateBtn.setAttribute("aria-pressed", String(s !== "off" && s !== "denied"));
   });
 
+  // Map controls are owned by MapLibre; relabel them without recreating the map.
+  $effect(() => {
+    const label = tr("Πηγές δεδομένων");
+    const m = map;
+    if (!m) return;
+    const credit = m.getContainer().querySelector<HTMLElement>(".maplibregl-ctrl-attrib-button");
+    if (credit) { credit.title = label; credit.setAttribute("aria-label", label); }
+    for (const dom of doms.values()) {
+      const label = dom.el.dataset.vehicleLabel;
+      if (label) dom.el.setAttribute("aria-label", tr(label));
+    }
+  });
   let infoOpen = $state(false);
   let Info = $state.raw<typeof import("../ui/InfoDialog.svelte").default | null>(null);
   let infoLoad: Promise<typeof import("../ui/InfoDialog.svelte").default> | null = null;
@@ -877,10 +891,7 @@
 {#if Info}<Info bind:open={infoOpen} motion={app.motion} {ended} />{/if}
 {#if ended}<OldTimetable {ended} onmore={openInfo} />{/if}
 {#if failed}
-  <div class="nogl" role="alert">
-    Ο χάρτης δεν μπορεί να εμφανιστεί: ο browser δεν υποστηρίζει WebGL2. Δοκίμασε άλλον browser ή ενεργοποίησε την
-    επιτάχυνση γραφικών.
-  </div>
+  <div class="nogl" role="alert">{tr("\r\n    Ο χάρτης δεν μπορεί να εμφανιστεί: ο browser δεν υποστηρίζει WebGL2. Δοκίμασε άλλον browser ή ενεργοποίησε την\r\n    επιτάχυνση γραφικών.\r\n  ")}</div>
 {/if}
 
 <style>

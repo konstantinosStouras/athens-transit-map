@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr, locale } from "../i18n.svelte";
   // One value per local hour as lines (broken where an hour has no value), with an optional
   // min-max band. Pointer or arrow keys pick an hour (`sel`); the parent says its values.
   type Series = { values: (number | null)[]; cls: string };
@@ -9,7 +10,7 @@
   } = $props();
 
   const H = 150, M = { l: 34, r: 6, t: 8, b: 20 };
-  const nf = (n: number) => n.toLocaleString("el-GR");
+  const nf = (n: number) => n.toLocaleString(locale.language === "en" ? "en-GB" : "el-GR");
   const bw = $derived((w - M.l - M.r) / 24);
   const x = (i: number) => M.l + i * bw + bw / 2;
   const top = $derived.by(() => {
@@ -41,16 +42,16 @@
   };
 </script>
 
-<svg width={w} height={H} role="slider" tabindex="0" aria-label="{label}, βελάκια για ώρα"
-  aria-valuemin={0} aria-valuemax={23} aria-valuenow={now} aria-valuetext={valuetext(now)}
+<svg width={w} height={H} role="slider" tabindex="0" aria-label={tr((label) + ", βελάκια για ώρα")}
+  aria-valuemin={0} aria-valuemax={23} aria-valuenow={now} aria-valuetext={tr(valuetext(now))}
   onkeydown={key} onblur={() => (sel = null)}
   onpointermove={pick} onpointerdown={pick} onpointerleave={() => (sel = null)}>
   {#each ticks as v (v)}
     <line class:base={!v} x1={M.l} x2={w - M.r} y1={y(v)} y2={y(v)} />
-    <text x={M.l - 5} y={y(v) + 4} text-anchor="end">{nf(v)}</text>
+    <text x={M.l - 5} y={y(v) + 4} text-anchor="end">{tr(nf(v))}</text>
   {/each}
   {#each { length: 8 }, k (k)}
-    <text x={x(k * 3)} y={H - 4} text-anchor="middle">{String(k * 3).padStart(2, "0")}</text>
+    <text x={x(k * 3)} y={H - 4} text-anchor="middle">{tr(String(k * 3).padStart(2, "0"))}</text>
   {/each}
   {#each bands as pts, k (k)}<polygon points={pts} />{/each}
   {#each lines as l, n (n)}

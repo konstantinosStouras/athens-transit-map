@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr } from "../i18n.svelte";
   import { MediaQuery } from "svelte/reactivity";
   import { API_DOCS, BACKEND_REPO, FRONTEND_REPO, GTFS_PAGE, STASY_GTFS_PAGE, TILE_CREDITS } from "../sources";
 
@@ -15,7 +16,7 @@
   const streets = ["M0 0.3 H1", "M0 0.55 H1", "M0.3 0 V0.55", "M0.5 0 V0.55", "M0.85 0.3 V0.55"];
 </script>
 
-<p class="lede">Ο χάρτης είναι τρία επίπεδα, το ένα πάνω στο άλλο.</p>
+<p class="lede">{tr("Ο χάρτης είναι τρία επίπεδα, το ένα πάνω στο άλλο.")}</p>
 
 <div class="layers">
   <!-- Decorative: the list says the same. Each sheet is a unit square mapped to a diamond. -->
@@ -61,32 +62,32 @@
 
   <ol>
     <li>
-      <h3><span>3</span> Λεωφορεία, ζωντανά</h3>
-      <p>Η τρέχουσα θέση κάθε οχήματος, από τον δικό μας διακομιστή δεδομένων.</p>
-      <p class="src"><a href={BACKEND_REPO} target="_blank" rel="noopener">Κώδικας του backend (GitHub)</a><span aria-hidden="true">&nbsp;·&nbsp;</span><a
-        href={API_DOCS} target="_blank" rel="noopener">Δημόσιο API (τεκμηρίωση)</a></p>
+      <h3><span>3</span>{tr(" Λεωφορεία, ζωντανά")}</h3>
+      <p>{tr("Η τρέχουσα θέση κάθε οχήματος, από τον δικό μας διακομιστή δεδομένων.")}</p>
+      <p class="src"><a href={BACKEND_REPO} target="_blank" rel="noopener">{tr("Κώδικας του backend (GitHub)")}</a><span aria-hidden="true">&nbsp;·&nbsp;</span><a
+        href={API_DOCS} target="_blank" rel="noopener">{tr("Δημόσιο API (τεκμηρίωση)")}</a></p>
     </li>
     <li>
-      <h3><span>2</span> Γραμμές και δρομολόγια</h3>
-      <p>Οι διαδρομές, οι στάσεις και το πρόγραμμα του ΟΑΣΑ.</p>
-      <p class="src"><a href={GTFS_PAGE} target="_blank" rel="noopener">Αρχείο GTFS του ΟΑΣΑ (data.gov.gr)</a></p>
-      <p>Μετρό, ΗΣΑΠ και τραμ: σταθμοί από το GTFS της ΣΤΑΣΥ, χάραξη γραμμών από το OpenStreetMap.</p>
-      <p class="src"><a href={STASY_GTFS_PAGE} target="_blank" rel="noopener">GTFS της ΣΤΑΣΥ (data.gov.gr)</a><span aria-hidden="true">&nbsp;·&nbsp;</span><a
+      <h3><span>2</span>{tr(" Γραμμές και δρομολόγια")}</h3>
+      <p>{tr("Οι διαδρομές, οι στάσεις και το πρόγραμμα του ΟΑΣΑ.")}</p>
+      <p class="src"><a href={GTFS_PAGE} target="_blank" rel="noopener">{tr("Αρχείο GTFS του ΟΑΣΑ (data.gov.gr)")}</a></p>
+      <p>{tr("Μετρό, ΗΣΑΠ και τραμ: σταθμοί από το GTFS της ΣΤΑΣΥ, χάραξη γραμμών από το OpenStreetMap.")}</p>
+      <p class="src"><a href={STASY_GTFS_PAGE} target="_blank" rel="noopener">{tr("GTFS της ΣΤΑΣΥ (data.gov.gr)")}</a><span aria-hidden="true">&nbsp;·&nbsp;</span><a
         href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap (ODbL)</a></p>
     </li>
     <li>
-      <h3><span>1</span> Βασικός χάρτης</h3>
-      <p>Δρόμοι, νερό και πάρκα. Ο χάρτης είναι έτοιμος· δεν τον φτιάχνουμε εμείς.</p>
+      <h3><span>1</span>{tr(" Βασικός χάρτης")}</h3>
+      <p>{tr("Δρόμοι, νερό και πάρκα. Ο χάρτης είναι έτοιμος· δεν τον φτιάχνουμε εμείς.")}</p>
       <p class="src">
         {#each TILE_CREDITS as c, i (c.href)}
-          {#if i}<span aria-hidden="true">&nbsp;·&nbsp;</span>{/if}{c.lead ?? ""}<a href={c.href} target="_blank" rel="noopener">{c.text}</a>
+          {#if i}<span aria-hidden="true">&nbsp;·&nbsp;</span>{/if}{tr(c.lead ?? "")}<a href={c.href} target="_blank" rel="noopener">{tr(c.text)}</a>
         {/each}
       </p>
     </li>
   </ol>
 </div>
 
-<p class="code"><a href={FRONTEND_REPO} target="_blank" rel="noopener">Κώδικας αυτού του χάρτη (GitHub)</a></p>
+<p class="code"><a href={FRONTEND_REPO} target="_blank" rel="noopener">{tr("Κώδικας αυτού του χάρτη (GitHub)")}</a></p>
 
 <style>
   .lede { margin: 0 0 8px; color: var(--muted); }

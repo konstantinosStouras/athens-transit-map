@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr } from "../i18n.svelte";
   import { untrack } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
   import { directionGroups, groupOf } from "../directions";
@@ -104,18 +105,18 @@
 <!-- Direction chips: show one direction on the map. From a vehicle, the other direction opens
      that direction's route card (the vehicle is not on it). -->
 {#snippet dirs(line: string, groups: DirectionGroup[], focus: string[] | undefined, mine: DirectionGroup | undefined)}
-  <div class="dirs" role="group" aria-label="Κατεύθυνση στον χάρτη">
-    <button type="button" aria-pressed={!focus} onclick={() => app.setFocus(line, null)}>Και οι δύο κατευθύνσεις</button>
+  <div class="dirs" role="group" aria-label={tr("Κατεύθυνση στον χάρτη")}>
+    <button type="button" aria-pressed={!focus} onclick={() => app.setFocus(line, null)}>{tr("Και οι δύο κατευθύνσεις")}</button>
     {#each groups as g (g.variants.join())}
       <button type="button" class:mine={g === mine} aria-pressed={focus?.join() === g.variants.join()}
-        title={g === mine ? "Η κατεύθυνση αυτού του οχήματος" : undefined}
+        title={tr((g === mine ? "Η κατεύθυνση αυτού του οχήματος" : undefined))}
         onclick={() => {
           // Read everything first: selectRoute tears this block down. It goes before setFocus,
           // which would drop a vehicle selection the new direction hides.
           const l = line, vs = g.variants, other = app.selection?.kind === "vehicle" && g !== mine;
           if (other) app.selectRoute(l, vs[0]);
           app.setFocus(l, vs);
-        }}>→ {g.to}</button>
+        }}>→ {tr(g.to)}</button>
     {/each}
   </div>
 {/snippet}
@@ -127,28 +128,28 @@
   {@const info = vehicle?.info ?? route?.info}
   {@const pinned = app.selected.includes(line)}
   {@const starred = app.favorites.includes(line)}
-  <section class="card" class:dragging class:peek={narrow.current && sheet === "peek"} aria-live="polite" aria-label="Λεπτομέρειες" bind:this={card} bind:offsetHeight={cardH}
-    style:transform={shift ? `translateY(${shift}px)` : undefined}>
+  <section class="card" class:dragging class:peek={narrow.current && sheet === "peek"} aria-live="polite" aria-label={tr("Λεπτομέρειες")} bind:this={card} bind:offsetHeight={cardH}
+    style:transform={tr(shift ? `translateY(${shift}px)` : undefined)}>
     <!-- svelte-ignore a11y_no_static_element_interactions (the keyboard goes through the grab button) -->
     <div class="top" bind:offsetHeight={topH} onpointerdown={down} onpointermove={move} onpointerup={end} onpointercancel={end}
       onlostpointercapture={end}>
       <!-- Pointer taps and drags are handled above; a click with no pointer (Enter, Space) comes here. -->
       <button type="button" class="grab" aria-expanded={sheet === "open"} aria-controls="card-body"
-        aria-label={sheet === "open" ? "Σύμπτυξη λεπτομερειών" : "Ανάπτυξη λεπτομερειών"} onclick={e => { if (e.detail === 0) sheet = flip(sheet); }}><span></span></button>
+        aria-label={tr((sheet === "open" ? "Σύμπτυξη λεπτομερειών" : "Ανάπτυξη λεπτομερειών"))} onclick={e => { if (e.detail === 0) sheet = flip(sheet); }}><span></span></button>
       <header>
-        <span class="pill" style:--c={app.lineColor(line).bg} style:--t={app.lineColor(line).fg}>{line}</span>
-        <h2>{vehicle ? (groupOf(vehicle.groups, vehicle.v.variant)?.to ? `→ ${groupOf(vehicle.groups, vehicle.v.variant)?.to}` : info?.name ?? "") : route ? `→ ${route.to}` : ""}</h2>
-        <button type="button" class="star" class:on={starred} aria-pressed={starred} title={starred ? "Αφαίρεση από τις αγαπημένες" : "Προσθήκη στις αγαπημένες"}
-          aria-label={starred ? `Αφαίρεση της γραμμής ${line} από τις αγαπημένες` : `Προσθήκη της γραμμής ${line} στις αγαπημένες`}
-          onclick={() => app.toggleFavorite(line)}>{starred ? "★" : "☆"}</button>
+        <span class="pill" style:--c={tr(app.lineColor(line).bg)} style:--t={tr(app.lineColor(line).fg)}>{tr(line)}</span>
+        <h2>{tr(vehicle ? (groupOf(vehicle.groups, vehicle.v.variant)?.to ? `→ ${groupOf(vehicle.groups, vehicle.v.variant)?.to}` : info?.name ?? "") : route ? `→ ${route.to}` : "")}</h2>
+        <button type="button" class="star" class:on={starred} aria-pressed={starred} title={tr((starred ? "Αφαίρεση από τις αγαπημένες" : "Προσθήκη στις αγαπημένες"))}
+          aria-label={tr((starred ? `Αφαίρεση της γραμμής ${line} από τις αγαπημένες` : `Προσθήκη της γραμμής ${line} στις αγαπημένες`))}
+          onclick={() => app.toggleFavorite(line)}>{tr(starred ? "★" : "☆")}</button>
         <!-- Keeps the line on the bar of the panel; the card can then be closed without losing it. -->
-        <button type="button" class="pin" class:on={pinned} aria-pressed={pinned} title={pinned ? "Ξεκαρφίτσωμα: βγάλε τη γραμμή από τον χάρτη" : "Καρφίτσωμα: κράτα τη γραμμή στον χάρτη"}
-          aria-label={pinned ? `Ξεκαρφίτσωμα της γραμμής ${line}` : `Καρφίτσωμα της γραμμής ${line}`} onclick={() => app.toggleLine(line)}>
+        <button type="button" class="pin" class:on={pinned} aria-pressed={pinned} title={tr((pinned ? "Ξεκαρφίτσωμα: βγάλε τη γραμμή από τον χάρτη" : "Καρφίτσωμα: κράτα τη γραμμή στον χάρτη"))}
+          aria-label={tr((pinned ? `Ξεκαρφίτσωμα της γραμμής ${line}` : `Καρφίτσωμα της γραμμής ${line}`))} onclick={() => app.toggleLine(line)}>
           <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill={pinned ? "currentColor" : "none"} stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round">
             <path d="M7 2.5h6l-.8 5 2.3 2.7v1.3H5.5V10.2l2.3-2.7z" /><path d="M10 11.5v6" />
           </svg>
         </button>
-        <button type="button" class="close" aria-label="Κλείσιμο" onclick={() => app.clearSelection()}>×</button>
+        <button type="button" class="close" aria-label={tr("Κλείσιμο")} onclick={() => app.clearSelection()}>×</button>
       </header>
     </div>
 
@@ -156,19 +157,19 @@
 
       {#if vehicle}
         {@const v = vehicle.v}
-        <div class="next-stop"><span>Επόμενη στάση</span><strong>{vehicle.nextStop?.name ?? "Δεν είναι διαθέσιμη"}</strong></div>
-        <p class="gps-freshness">Θέση GPS · {ago(v.position_at, app.serverNow)}</p>
+        <div class="next-stop"><span>{tr("Επόμενη στάση")}</span><strong>{tr(vehicle.nextStop?.name ?? "Δεν είναι διαθέσιμη")}</strong></div>
+        <p class="gps-freshness">{tr("Θέση GPS · ")}{tr(ago(v.position_at, app.serverNow))}</p>
         <div class="estimate">
-          <span>Σε σχέση με το πρόγραμμα</span>
-          <strong>{v.delay_s == null ? "Χωρίς εκτίμηση" : Math.abs(v.delay_s) < 60 ? "Περίπου στην ώρα του" : `Περίπου ${Math.round(Math.abs(v.delay_s) / 60)} ${Math.round(Math.abs(v.delay_s) / 60) === 1 ? "λεπτό" : "λεπτά"} ${v.delay_s < 0 ? "νωρίτερα" : "καθυστέρηση"}`}</strong>
+          <span>{tr("Σε σχέση με το πρόγραμμα")}</span>
+          <strong>{tr(v.delay_s == null ? "Χωρίς εκτίμηση" : Math.abs(v.delay_s) < 60 ? "Περίπου στην ώρα του" : `Περίπου ${Math.round(Math.abs(v.delay_s) / 60)} ${Math.round(Math.abs(v.delay_s) / 60) === 1 ? "λεπτό" : "λεπτά"} ${v.delay_s < 0 ? "νωρίτερα" : "καθυστέρηση"}`)}</strong>
           {#if gtfsEnded(app.status?.gtfs_expires)}
-            <p class="schedule-warning">Το πρόγραμμα έχει λήξει. Η σύγκριση με το ωράριο είναι κατά προσέγγιση· η θέση GPS ενημερώνεται ξεχωριστά.</p>
-          {:else}<p>Σύγκριση με το ωράριο, όχι πρόβλεψη άφιξης στη στάση σου.</p>{/if}
+            <p class="schedule-warning">{tr("Το πρόγραμμα έχει λήξει. Η σύγκριση με το ωράριο είναι κατά προσέγγιση· η θέση GPS ενημερώνεται ξεχωριστά.")}</p>
+          {:else}<p>{tr("Σύγκριση με το ωράριο, όχι πρόβλεψη άφιξης στη στάση σου.")}</p>{/if}
         </div>
-        {#if v.trip_label}<p class="trip-label">{v.trip_label}</p>{/if}
-        {#if "loading" in vehicle}<p class="muted">Φόρτωση δρομολογίου…</p>{/if}
-        <details class="technical"><summary>Περισσότερες λεπτομέρειες</summary>
-          <dl><dt>Όχημα</dt><dd>{v.id}</dd><dt>Κωδικός στάσης</dt><dd>{v.next_stop_id ?? "—"}</dd><dt>Κωδικός δρομολογίου</dt><dd>{v.trip_id ?? "—"}</dd><dt>Ώρα GPS</dt><dd>{clock(v.position_at)}</dd></dl>
+        {#if v.trip_label}<p class="trip-label">{tr(v.trip_label)}</p>{/if}
+        {#if "loading" in vehicle}<p class="muted">{tr("Φόρτωση δρομολογίου…")}</p>{/if}
+        <details class="technical"><summary>{tr("Περισσότερες λεπτομέρειες")}</summary>
+          <dl><dt>{tr("Όχημα")}</dt><dd>{tr(v.id)}</dd><dt>{tr("Κωδικός στάσης")}</dt><dd>{tr(v.next_stop_id ?? "—")}</dd><dt>{tr("Κωδικός δρομολογίου")}</dt><dd>{tr(v.trip_id ?? "—")}</dd><dt>{tr("Ώρα GPS")}</dt><dd>{tr(clock(v.position_at))}</dd></dl>
         </details>
         {#if vehicle.groups.length > 1}
           {@const mine = groupOf(vehicle.groups, v.variant)}
@@ -177,9 +178,9 @@
       {:else if route}
         <table>
           <tbody>
-            <tr><th>Κατεύθυνση</th><td>{route.from} → {route.to}</td></tr>
-            <tr><th>Στάσεις</th><td>{route.variant.stops.length}</td></tr>
-            <tr><th>Οχήματα τώρα</th><td>{route.running}</td></tr>
+            <tr><th>{tr("Κατεύθυνση")}</th><td>{tr(route.from)} → {tr(route.to)}</td></tr>
+            <tr><th>{tr("Στάσεις")}</th><td>{tr(route.variant.stops.length)}</td></tr>
+            <tr><th>{tr("Οχήματα τώρα")}</th><td>{tr(route.running)}</td></tr>
           </tbody>
         </table>
         {#if route.groups.length > 1}

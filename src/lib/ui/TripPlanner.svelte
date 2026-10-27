@@ -1,4 +1,5 @@
 <script lang="ts" module>
+  import { t as tr } from "../i18n.svelte";
   import type { Place } from "../trip";
 
   // Kept across close and reopen.
@@ -368,210 +369,199 @@
 <div class="trip" role="dialog" tabindex="-1" aria-labelledby="trip-h" {@attach focusIn}
   onkeydown={e => { if (e.key === "Escape" && !openField) { e.stopPropagation(); close(); } }}>
   {#if folded && from && to && trips}
-    <span id="trip-h" class="sr">Διαδρομή</span>
+    <span id="trip-h" class="sr">{tr("Διαδρομή")}</span>
     <div class="row">
       <button type="button" class="summary" aria-expanded="false" onclick={() => (folded = false)}>
-        <b>{from.label} → {to.label}</b>
-        <small>{#if trips.length}{trips.length} {trips.length === 1 ? "γραμμή" : "γραμμές"}{#if trips.length > MAX_LINES} · {MAX_LINES} στον χάρτη{/if}{:else if xfers.length}με μία αλλαγή{/if}{#if app.alert} · <Bell label="ειδοποίηση" />{/if}</small>
+        <b>{tr(from.label)} → {tr(to.label)}</b>
+        <small>{#if trips.length}{tr(trips.length)} {tr(trips.length === 1 ? "γραμμή" : "γραμμές")}{#if trips.length > MAX_LINES} · {tr(MAX_LINES)}{tr(" στον χάρτη")}{/if}{:else if xfers.length}{tr("με μία αλλαγή")}{/if}{#if app.alert} · <Bell label={tr("ειδοποίηση")} />{/if}</small>
         {#if onMap.length || xferLines.length}
           <span class="lines">
             {#each onMap as t (t.line)}
-              <span class="ln" style:--c={app.lineColor(t.line).bg}><b>{t.line}</b>{#if goingNow(t.line, t.variants.map(v => v.id))}<i>→ {goingNow(t.line, t.variants.map(v => v.id))}</i>{/if}</span>
+              <span class="ln" style:--c={tr(app.lineColor(t.line).bg)}><b>{tr(t.line)}</b>{#if goingNow(t.line, t.variants.map(v => v.id))}<i>→ {tr(goingNow(t.line, t.variants.map(v => v.id)))}</i>{/if}</span>
             {/each}
             {#each xferLines as l (l)}
-              <span class="ln" style:--c={app.lineColor(l).bg}><b>{l}</b>{#if goingNow(l)}<i>→ {goingNow(l)}</i>{/if}</span>
+              <span class="ln" style:--c={tr(app.lineColor(l).bg)}><b>{tr(l)}</b>{#if goingNow(l)}<i>→ {tr(goingNow(l))}</i>{/if}</span>
             {/each}
           </span>
         {/if}
       </button>
-      <button type="button" class="icon" aria-label="Κλείσιμο διαδρομής" title="Κλείσιμο" onclick={close}>×</button>
+      <button type="button" class="icon" aria-label={tr("Κλείσιμο διαδρομής")} title={tr("Κλείσιμο")} onclick={close}>×</button>
     </div>
   {:else}
     <div class="row">
-      <h3 id="trip-h">Διαδρομή</h3>
+      <h3 id="trip-h">{tr("Διαδρομή")}</h3>
       {#if trips?.length || xfers.length}
-        <button type="button" class="icon" aria-label="Σύμπτυξη" title="Σύμπτυξη" onclick={() => (folded = true)}>
+        <button type="button" class="icon" aria-label={tr("Σύμπτυξη")} title={tr("Σύμπτυξη")} onclick={() => (folded = true)}>
           <svg viewBox="0 0 12 8" width="14" height="10" aria-hidden="true"><path d="M1 6.5l5-5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </button>
       {/if}
-      <button type="button" class="icon" aria-label="Κλείσιμο διαδρομής" title="Κλείσιμο" onclick={close}>×</button>
+      <button type="button" class="icon" aria-label={tr("Κλείσιμο διαδρομής")} title={tr("Κλείσιμο")} onclick={close}>×</button>
     </div>
 
     <div class="ends">
       {#each FIELDS as f (f)}
         {@const e = ends[f]}
         <div class="field">
-          <i class="dot {f}" aria-hidden="true">{f === "from" ? "A" : "B"}</i>
+          <i class="dot {f}" aria-hidden="true">{tr(f === "from" ? "A" : "B")}</i>
           <input id="trip-{f}" bind:this={inputs[f]} type="search" autocomplete="off" spellcheck="false" enterkeyhint="search"
-            aria-label={f === "from" ? "Από" : "Προς"} placeholder={f === "from" ? "Από: η θέση μου, στάση, μετρό, διεύθυνση" : "Προς: στάση, μετρό, διεύθυνση, μαγαζί"}
-            value={e.text} class:set={!!e.place}
+            aria-label={tr((f === "from" ? "Από" : "Προς"))} placeholder={tr((f === "from" ? "Από: η θέση μου, στάση, μετρό, διεύθυνση" : "Προς: στάση, μετρό, διεύθυνση, μαγαζί"))}
+            value={e.place?.kind === "me" ? tr(ME) : e.text} class:set={!!e.place}
             role="combobox" aria-expanded={openField === f} aria-controls="trip-{f}-list" aria-autocomplete="list"
             aria-activedescendant={openField === f && opts[active] ? `trip-${f}-${active}` : undefined}
             onfocus={() => { openField = f; }} oninput={ev => edit(f, ev.currentTarget.value)} onkeydown={ev => onkeydown(f, ev)} />
         </div>
         <!-- In the flow, not floating: a floating list is cut off by the planner's own scroll box. -->
         {#if openField === f}
-            <ul id="trip-{f}-list" class="list" role="listbox" aria-label={f === "from" ? "Αφετηρία" : "Προορισμός"}>
+            <ul id="trip-{f}-list" class="list" role="listbox" aria-label={tr((f === "from" ? "Αφετηρία" : "Προορισμός"))}>
               {#each opts as o, k (o.key)}
                 <!-- svelte-ignore a11y_click_events_have_key_events (keyboard goes through the combobox input) -->
                 <li id="trip-{f}-{k}" role="option" aria-selected={k === active} class:active={k === active}
                   onpointerdown={ev => ev.preventDefault()} onclick={() => choose(f, o)}>
-                  {#if o.me}<span><i aria-hidden="true">📍</i> {ME}</span>
+                  {#if o.me}<span><i aria-hidden="true">📍</i> {tr(ME)}</span>
                   {:else if o.place}
-                    <span><i aria-hidden="true">{icon(o.place)}</i> {o.place.label}</span>
-                    <small>{o.place.kind === "metro-any" ? "η γραμμή που σε πάει πιο γρήγορα σε σταθμό" : o.place.lines.length ? o.place.lines.slice(0, 6).join(" · ") + (o.place.lines.length > 6 ? " …" : "") : o.place.hint ?? ""}</small>
+                    <span><i aria-hidden="true">{tr(icon(o.place))}</i> {tr(o.place.label)}</span>
+                    <small>{tr(o.place.kind === "metro-any" ? "η γραμμή που σε πάει πιο γρήγορα σε σταθμό" : o.place.lines.length ? o.place.lines.slice(0, 6).join(" · ") + (o.place.lines.length > 6 ? " …" : "") : o.place.hint ?? "")}</small>
                   {/if}
                 </li>
               {:else}
-                <li class="empty">{geoBusy ? "Αναζήτηση…" : "Δεν βρέθηκε στάση ή περιοχή με αυτό το όνομα."}</li>
+                <li class="empty">{tr(geoBusy ? "Αναζήτηση…" : "Δεν βρέθηκε στάση ή περιοχή με αυτό το όνομα.")}</li>
               {/each}
-              {#if geoBusy && opts.length}<li class="empty" aria-hidden="true">Αναζήτηση περιοχών…</li>{/if}
+              {#if geoBusy && opts.length}<li class="empty" aria-hidden="true">{tr("Αναζήτηση περιοχών…")}</li>{/if}
             </ul>
           {/if}
       {/each}
-      <button type="button" class="swap" hidden={!!openField} aria-label="Αντιστροφή αφετηρίας και προορισμού" title="Αντιστροφή" onclick={swap}>⇅</button>
+      <button type="button" class="swap" hidden={!!openField} aria-label={tr("Αντιστροφή αφετηρίας και προορισμού")} title={tr("Αντιστροφή")} onclick={swap}>⇅</button>
     </div>
-    {#if locating}<p class="note">Εντοπισμός…</p>{/if}
+    {#if locating}<p class="note">{tr("Εντοπισμός…")}</p>{/if}
 
-    {#if err}<p class="warn" role="status">{err}</p>{/if}
-    {#if byMetro}<p class="metro">🚇 Με {byMetro.line}: {byMetro.from} → {byMetro.to}{#if byMetro.walk >= 50} · περπάτημα {metres(byMetro.walk)}{/if}. Συνήθως πιο γρήγορα από το λεωφορείο.</p>{/if}
+    {#if err}<p class="warn" role="status">{tr(err)}</p>{/if}
+    {#if byMetro}<p class="metro">{tr("🚇 Με ")}{tr(byMetro.line)}: {tr(byMetro.from)} → {tr(byMetro.to)}{#if byMetro.walk >= 50}{tr(" · περπάτημα ")}{tr(metres(byMetro.walk))}{/if}{tr(". Συνήθως πιο γρήγορα από το λεωφορείο.")}</p>{/if}
     {#if failed}
-      <p class="warn">Δεν φόρτωσαν οι στάσεις. <button type="button" class="link" onclick={load}>Ξανά</button></p>
+      <p class="warn">{tr("Δεν φόρτωσαν οι στάσεις. ")}<button type="button" class="link" onclick={load}>{tr("Ξανά")}</button></p>
     {:else if !data}
-      <p class="note">Φόρτωση στάσεων…</p>
+      <p class="note">{tr("Φόρτωση στάσεων…")}</p>
     {:else if tooClose}
-      <p class="note">{#if anyEnd && walkTo}Ο σταθμός {walkTo.name} είναι {metres(walkTo.d)}: καλύτερα με τα πόδια.{:else}Είναι πολύ κοντά: καλύτερα με τα πόδια.{/if}</p>
+      <p class="note">{#if anyEnd && walkTo}{tr("Ο σταθμός ")}{tr(walkTo.name)}{tr(" είναι ")}{tr(metres(walkTo.d))}{tr(": καλύτερα με τα πόδια.")}{:else}{tr("Είναι πολύ κοντά: καλύτερα με τα πόδια.")}{/if}</p>
     {:else if trips && !trips.length && !xfers.length}
-      <p class="note">Καμία γραμμή δεν πάει, ούτε με μία αλλαγή. Δοκίμασε περισσότερο περπάτημα ή κοντινή περιοχή.</p>
+      <p class="note">{tr("Καμία γραμμή δεν πάει, ούτε με μία αλλαγή. Δοκίμασε περισσότερο περπάτημα ή κοντινή περιοχή.")}</p>
     {:else if trips}
-      {#if !trips.length}<p class="note">Καμία γραμμή λεωφορείου δεν πάει χωρίς αλλαγή.</p>{/if}
+      {#if !trips.length}<p class="note">{tr("Καμία γραμμή λεωφορείου δεν πάει χωρίς αλλαγή.")}</p>{/if}
       <ol class="results" bind:this={resultsEl}>
         {#each trips as t, k (t.line)}
           {@const info = app.lineInfo.get(t.line)}
           {@const v = t.variants[0]}
           <li class:out={k >= MAX_LINES} class:picked={picked === t.line}>
-            <button type="button" class="chip" style:--c={app.lineColor(t.line).bg} style:--t={app.lineColor(t.line).fg}
-              aria-pressed={app.selected.includes(t.line)} title={info?.name}
-              onclick={() => toggleTripLine(app, t)}>{t.line}</button>
-            <button type="button" class="pick" aria-pressed={picked === t.line} title="Μόνο αυτή στον χάρτη, με τις στάσεις της" onclick={() => solo(t)}>
-              <span><b>{mins(t.min)}</b> {stop(v.from)} → {offAt(v.to)}</span>
-              <small>{#if going(t)}προς {going(t)} · {/if}{t.stops} {t.stops === 1 ? "στάση" : "στάσεις"} · περπάτημα {metres(t.walk)}{#if k >= MAX_LINES} · εκτός χάρτη (έως {MAX_LINES}){/if}</small>
+            <button type="button" class="chip" style:--c={tr(app.lineColor(t.line).bg)} style:--t={tr(app.lineColor(t.line).fg)}
+              aria-pressed={app.selected.includes(t.line)} title={tr((info?.name))}
+              onclick={() => toggleTripLine(app, t)}>{tr(t.line)}</button>
+            <button type="button" class="pick" aria-pressed={picked === t.line} title={tr("Μόνο αυτή στον χάρτη, με τις στάσεις της")} onclick={() => solo(t)}>
+              <span><b>{tr(mins(t.min))}</b> {tr(stop(v.from))} → {tr(offAt(v.to))}</span>
+              <small>{#if going(t)}{tr("προς ")}{tr(going(t))} · {/if}{tr(t.stops)} {tr(t.stops === 1 ? "στάση" : "στάσεις")}{tr(" · περπάτημα ")}{tr(metres(t.walk))}{#if k >= MAX_LINES}{tr(" · εκτός χάρτη (έως ")}{tr(MAX_LINES)}){/if}</small>
             </button>
-            <a class="maps" href={mapsTo(v.from)} target="_blank" rel="noopener" title="Με τα πόδια ως τη στάση {stop(v.from)}, στο Google Maps"
-              aria-label="Με τα πόδια ως τη στάση {stop(v.from)}, στο Google Maps"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <a class="maps" href={mapsTo(v.from)} target="_blank" rel="noopener" title={tr("Με τα πόδια ως τη στάση " + (stop(v.from)) + ", στο Google Maps")}
+              aria-label={tr("Με τα πόδια ως τη στάση " + (stop(v.from)) + ", στο Google Maps")}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
               <path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></svg></a>
           </li>
         {/each}
       </ol>
       {#if xfers.length}
-        <h4 class="sub">Με μία αλλαγή</h4>
+        <h4 class="sub">{tr("Με μία αλλαγή")}</h4>
         <ol class="results">
           {#each xfers as x (xkey(x))}
             {@const [a, b] = x.legs}
             <li class:picked={picked === xkey(x)}>
               <span class="pair">
-                <b class="chip on" style:--c={app.lineColor(a.line).bg} style:--t={app.lineColor(a.line).fg}>{a.line}</b>
-                <b class="chip on" style:--c={app.lineColor(b.line).bg} style:--t={app.lineColor(b.line).fg}>{b.line}</b>
+                <b class="chip on" style:--c={tr(app.lineColor(a.line).bg)} style:--t={tr(app.lineColor(a.line).fg)}>{tr(a.line)}</b>
+                <b class="chip on" style:--c={tr(app.lineColor(b.line).bg)} style:--t={tr(app.lineColor(b.line).fg)}>{tr(b.line)}</b>
               </span>
-              <button type="button" class="pick" aria-pressed={picked === xkey(x)} title="Αυτές οι δύο στον χάρτη, με τις στάσεις" onclick={() => pickXfer(x)}>
-                <span><b>{mins(x.min)}</b> {stop(a.from)} → {stop(a.to)}, αλλαγή: {stop(b.from)} → {offAt(b.to)}</span>
-                <small>{a.stops + b.stops} στάσεις · περπάτημα {metres(x.walk)}{#if x.xfer >= 50} και {metres(x.xfer)} στην αλλαγή{/if} · με ~5′ αναμονή</small>
+              <button type="button" class="pick" aria-pressed={picked === xkey(x)} title={tr("Αυτές οι δύο στον χάρτη, με τις στάσεις")} onclick={() => pickXfer(x)}>
+                <span><b>{tr(mins(x.min))}</b> {tr(stop(a.from))} → {tr(stop(a.to))}{tr(", αλλαγή: ")}{tr(stop(b.from))} → {tr(offAt(b.to))}</span>
+                <small>{tr(a.stops + b.stops)}{tr(" στάσεις · περπάτημα ")}{tr(metres(x.walk))}{#if x.xfer >= 50}{tr(" και ")}{tr(metres(x.xfer))}{tr(" στην αλλαγή")}{/if}{tr(" · με ~5′ αναμονή")}</small>
               </button>
-              <a class="maps" href={mapsTo(a.from)} target="_blank" rel="noopener" title="Με τα πόδια ως τη στάση {stop(a.from)}, στο Google Maps"
-                aria-label="Με τα πόδια ως τη στάση {stop(a.from)}, στο Google Maps"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <a class="maps" href={mapsTo(a.from)} target="_blank" rel="noopener" title={tr("Με τα πόδια ως τη στάση " + (stop(a.from)) + ", στο Google Maps")}
+                aria-label={tr("Με τα πόδια ως τη στάση " + (stop(a.from)) + ", στο Google Maps")}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
                 <path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></svg></a>
             </li>
           {/each}
         </ol>
       {/if}
-      {#if picked && trips.length}<button type="button" class="link all" onclick={showAll}>Όλες οι γραμμές στον χάρτη</button>{/if}
+      {#if picked && trips.length}<button type="button" class="link all" onclick={showAll}>{tr("Όλες οι γραμμές στον χάρτη")}</button>{/if}
       {#if shown}
         <div class="alert">
           {#if app.alert}
             {@const a = app.alert}
-            <span><Bell /> {a.lines.map(l => l.line).join(", ")}: έως {a.n} {a.n === 1 ? "στάση" : "στάσεις"} πριν από {a.label}{a.push ? ", και με κλειστή σελίδα" : ""}.</span>
-            <button type="button" class="link" onclick={() => app.setAlert(null)}>Ακύρωση</button>
-            {#if tgLink}<a class="bell tg" href={tgLink} target="_blank" rel="noopener">Στο Telegram</a>{/if}
+            <span><Bell /> {tr(a.lines.map(l => l.line).join(", "))}{tr(": έως ")}{tr(a.n)} {tr(a.n === 1 ? "στάση" : "στάσεις")}{tr(" πριν από ")}{tr(a.label)}{tr(a.push ? ", και με κλειστή σελίδα" : "")}.</span>
+            <button type="button" class="link" onclick={() => app.setAlert(null)}>{tr("Ακύρωση")}</button>
+            {#if tgLink}<a class="bell tg" href={tgLink} target="_blank" rel="noopener">{tr("Στο Telegram")}</a>{/if}
           {:else if data.stale}
-            <small>Ειδοποίηση: όχι με παλιά δεδομένα στάσεων.</small>
+            <small>{tr("Ειδοποίηση: όχι με παλιά δεδομένα στάσεων.")}</small>
           {:else}
             <button type="button" class="lead" aria-expanded={alertOpen} aria-controls="trip-alert" onclick={() => (alertOpen = !alertOpen)}>
-              <Bell /> Ειδοποίηση
-              <svg viewBox="0 0 12 8" width="12" height="8" aria-hidden="true" class:up={alertOpen}><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              <Bell />{tr(" Ειδοποίηση\r\n              ")}<svg viewBox="0 0 12 8" width="12" height="8" aria-hidden="true" class:up={alertOpen}><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
             </button>
           {/if}
         </div>
         {#if alertOpen && !app.alert && !data.stale}
           <div id="trip-alert" class="form">
-            {#if xPicked}<p class="note">Για την πρώτη γραμμή, {xPicked.legs[0].line}, ως την αλλαγή στη στάση {stop(xPicked.legs[0].to)}.</p>{/if}
+            {#if xPicked}<p class="note">{tr("Για την πρώτη γραμμή, ")}{tr(xPicked.legs[0].line)}{tr(", ως την αλλαγή στη στάση ")}{tr(stop(xPicked.legs[0].to))}.</p>{/if}
             {#if near.length > 1}
-              <label>Στάση
-                <select bind:value={boardName}>
-                  <option value="">η κοντινότερη κάθε γραμμής</option>
-                  {#each near as b (b.name)}<option value={b.name}>{b.name} · {metres(b.walk)} · {b.lines.map(l => l.line).join(", ")}</option>{/each}
+              <label>{tr("Στάση\r\n                ")}<select bind:value={boardName}>
+                  <option value="">{tr("η κοντινότερη κάθε γραμμής")}</option>
+                  {#each near as b (b.name)}<option value={b.name}>{tr(b.name)} · {tr(metres(b.walk))} · {tr(b.lines.map(l => l.line).join(", "))}</option>{/each}
                 </select>
               </label>
             {/if}
-            <label>Πότε
-              <select bind:value={n}>
-                {#each [1, 2, 3, 4, 5] as k (k)}<option value={k}>{k === 1 ? "στην προηγούμενη στάση" : `${k} στάσεις πριν`}</option>{/each}
+            <label>{tr("Πότε\r\n              ")}<select bind:value={n}>
+                {#each [1, 2, 3, 4, 5] as k (k)}<option value={k}>{tr(k === 1 ? "στην προηγούμενη στάση" : `${k} στάσεις πριν`)}</option>{/each}
               </select>
             </label>
-            <label>Επανάληψη
-              <select bind:value={repDays}>
-                <option value={0}>όχι, μόνο τώρα</option>
-                <option value={31}>τις καθημερινές</option>
-                <option value={127}>κάθε μέρα</option>
-                <option value={96}>τα Σαββατοκύριακα</option>
+            <label>{tr("Επανάληψη\r\n              ")}<select bind:value={repDays}>
+                <option value={0}>{tr("όχι, μόνο τώρα")}</option>
+                <option value={31}>{tr("τις καθημερινές")}</option>
+                <option value={127}>{tr("κάθε μέρα")}</option>
+                <option value={96}>{tr("τα Σαββατοκύριακα")}</option>
               </select>
             </label>
             {#if repDays}
-              <label>Από
-                <select class="hm" bind:value={repH} aria-label="Ώρα">{#each { length: 24 }, h (h)}<option value={h}>{String(h).padStart(2, "0")}</option>{/each}</select>:<select
-                  class="hm" bind:value={repM} aria-label="Λεπτά">{#each { length: 12 }, k (k)}<option value={k * 5}>{String(k * 5).padStart(2, "0")}</option>{/each}</select>
-                για <select bind:value={repLen}>{#each [[30, "½ ώρα"], [60, "1 ώρα"], [90, "1½ ώρα"], [120, "2 ώρες"]] as const as [m, t] (m)}<option value={m}>{t}</option>{/each}</select>
+              <label>{tr("Από\r\n                ")}<select class="hm" bind:value={repH} aria-label={tr("Ώρα")}>{#each { length: 24 }, h (h)}<option value={h}>{tr(String(h).padStart(2, "0"))}</option>{/each}</select>:<select
+                  class="hm" bind:value={repM} aria-label={tr("Λεπτά")}>{#each { length: 12 }, k (k)}<option value={k * 5}>{tr(String(k * 5).padStart(2, "0"))}</option>{/each}</select>{tr("\r\n                για ")}<select bind:value={repLen}>{#each [[30, "½ ώρα"], [60, "1 ώρα"], [90, "1½ ώρα"], [120, "2 ώρες"]] as const as [m, t] (m)}<option value={m}>{tr(t)}</option>{/each}</select>
               </label>
             {/if}
             <fieldset>
-              <legend>Γραμμές</legend>
+              <legend>{tr("Γραμμές")}</legend>
               {#each tickable as l (l)}
                 {@const info = app.lineInfo.get(l)}
-                <label class="ln" style:--c={app.lineColor(l).bg}>
-                  <input type="checkbox" checked={!off.includes(l)} onchange={e => setTicked(l, e.currentTarget.checked)} /><b>{l}</b>
+                <label class="ln" style:--c={tr(app.lineColor(l).bg)}>
+                  <input type="checkbox" checked={!off.includes(l)} onchange={e => setTicked(l, e.currentTarget.checked)} /><b>{tr(l)}</b>
                 </label>
               {/each}
             </fieldset>
             <div class="go">
-              {#if !repDays}<button type="button" class="bell" disabled={!targets.length || pushing} onclick={alertMe}>{pushing ? "…" : "Εδώ"}</button>{/if}
-              {#if tgLink}<a class="bell tg" href={tgLink} target="_blank" rel="noopener">Στο Telegram</a>
-              {:else if repDays}<small class="warn">Διάλεξε ώρα έναρξης, ώστε να τελειώνει ως τα μεσάνυχτα.</small>{/if}
+              {#if !repDays}<button type="button" class="bell" disabled={!targets.length || pushing} onclick={alertMe}>{tr(pushing ? "…" : "Εδώ")}</button>{/if}
+              {#if tgLink}<a class="bell tg" href={tgLink} target="_blank" rel="noopener">{tr("Στο Telegram")}</a>
+              {:else if repDays}<small class="warn">{tr("Διάλεξε ώρα έναρξης, ώστε να τελειώνει ως τα μεσάνυχτα.")}</small>{/if}
             </div>
             {#if repDays}
-              <p class="note">Η επανάληψη γίνεται στο Telegram (@{BOT}): σου γράφει κάθε φορά που ένα λεωφορείο πλησιάζει, μόνο σε αυτές τις ώρες.
-                Εκεί, /list δείχνει τις ειδοποιήσεις σου και τις σταματάει.</p>
+              <p class="note">{tr("Η επανάληψη γίνεται στο Telegram (@")}{tr(BOT)}{tr("): σου γράφει κάθε φορά που ένα λεωφορείο πλησιάζει, μόνο σε αυτές τις ώρες.\r\n                Εκεί, /list δείχνει τις ειδοποιήσεις σου και τις σταματάει.")}</p>
             {:else}
-            <p class="note">Για 2 ώρες.
-              {#if canPush()}Εδώ: και με κλειστή σελίδα ή κλειδωμένη οθόνη.
-              {:else}Εδώ: όσο η σελίδα είναι ανοιχτή{canNotify ? "" : ", μόνο μέσα στη σελίδα"}.{/if}
-              Telegram: και με κλειδωμένη οθόνη, από το @{BOT}.</p>
+            <p class="note">{tr("Για 2 ώρες.\r\n              ")}{#if canPush()}{tr("Εδώ: και με κλειστή σελίδα ή κλειδωμένη οθόνη.\r\n              ")}{:else}{tr("Εδώ: όσο η σελίδα είναι ανοιχτή")}{tr(canNotify ? "" : ", μόνο μέσα στη σελίδα")}.{/if}{tr("\r\n              Telegram: και με κλειδωμένη οθόνη, από το @")}{tr(BOT)}.</p>
             {/if}
             {#if iosTab && !repDays}
-              <p class="note">iPhone, για ειδοποίηση εδώ με κλειδωμένη οθόνη: Κοινοποίηση → «Προσθήκη στην οθόνη Αφετηρίας», και άνοιξε τον χάρτη από το εικονίδιο.</p>
+              <p class="note">{tr("iPhone, για ειδοποίηση εδώ με κλειδωμένη οθόνη: Κοινοποίηση → «Προσθήκη στην οθόνη Αφετηρίας», και άνοιξε τον χάρτη από το εικονίδιο.")}</p>
             {/if}
           </div>
         {/if}
       {/if}
     {:else}
-      <p class="note">Διάλεξε από πού και προς τα πού: οι γραμμές που τα συνδέουν φαίνονται στον χάρτη.</p>
+      <p class="note">{tr("Διάλεξε από πού και προς τα πού: οι γραμμές που τα συνδέουν φαίνονται στον χάρτη.")}</p>
     {/if}
 
     <div class="foot">
-      <label>Περπάτημα έως
-        <select bind:value={radius}>{#each RADII as r (r)}<option value={r}>{r} μ.</option>{/each}</select>
+      <label>{tr("Περπάτημα έως\r\n        ")}<select bind:value={radius}>{#each RADII as r (r)}<option value={r}>{tr(r)}{tr(" μ.")}</option>{/each}</select>
       </label>
-      {#if trips?.length || xfers.length}<small>Χρόνοι κατά προσέγγιση, χωρίς την αναμονή στη στάση.</small>{/if}
-      {#if data?.stale}<small>Στάσεις από {data.stale}· μπορεί να έχουν αλλάξει.</small>{/if}
-      {#if geo?.places.length}<small>Περιοχές: © OpenStreetMap</small>{/if}
+      {#if trips?.length || xfers.length}<small>{tr("Χρόνοι κατά προσέγγιση, χωρίς την αναμονή στη στάση.")}</small>{/if}
+      {#if data?.stale}<small>{tr("Στάσεις από ")}{tr(data.stale)}{tr("· μπορεί να έχουν αλλάξει.")}</small>{/if}
+      {#if geo?.places.length}<small>{tr("Περιοχές: © OpenStreetMap")}</small>{/if}
     </div>
   {/if}
 </div>

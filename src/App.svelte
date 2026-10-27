@@ -4,8 +4,14 @@
   import Panel from "./lib/ui/Panel.svelte";
   import InfoCard from "./lib/ui/InfoCard.svelte";
   import StationCard from "./lib/ui/StationCard.svelte";
+  import { locale, t } from "./lib/i18n.svelte";
   import { applyTheme } from "./lib/theme";
 
+  $effect(() => {
+    document.documentElement.lang = locale.language;
+    try { localStorage.setItem("oasa-language", locale.language); } catch { /* private browsing */ }
+    document.title = t("Λεωφορεία ΟΑΣΑ") + " · Live";
+  });
   const app = new AppState();
   app.init();
   $effect(() => applyTheme(app.theme));

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr } from "../i18n.svelte";
   import { SPEED_STOPS, speedNote, type SpeedMeta } from "../speed";
 
   // The speed layer's legend: colours, where the numbers come from, and a × that turns the layer off.
@@ -6,21 +7,17 @@
   const note = $derived(meta && speedNote(meta));
 </script>
 
-<section class="legend" aria-label="Ταχύτητα λεωφορείων">
+<section class="legend" aria-label={tr("Ταχύτητα λεωφορείων")}>
   <header>
-    <b>Ταχύτητα λεωφορείων</b>
-    <span class="scale" aria-label="από αργά (κόκκινο) σε γρήγορα (μπλε), km/h">
-      {#each SPEED_STOPS as [v, c] (v)}<i style:background={c}>{v}</i>{/each}<small>km/h</small>
+    <b>{tr("Ταχύτητα λεωφορείων")}</b>
+    <span class="scale" aria-label={tr("από αργά (κόκκινο) σε γρήγορα (μπλε), km/h")}>
+      {#each SPEED_STOPS as [v, c] (v)}<i style:background={tr(c)}>{tr(v)}</i>{/each}<small>km/h</small>
     </span>
-    <button type="button" class="close" aria-label="Κλείσιμο ταχυτήτων" title="Κλείσιμο ταχυτήτων" onclick={onclose}>×</button>
+    <button type="button" class="close" aria-label={tr("Κλείσιμο ταχυτήτων")} title={tr("Κλείσιμο ταχυτήτων")} onclick={onclose}>×</button>
   </header>
   <details>
-    <summary>{#if note}{note.period} · {note.samples} μετρήσεις · μαζί με τις στάσεις{:else}Φόρτωση…{/if}</summary>
-    <p>
-      Διάμεση ταχύτητα ανά κομμάτι από στάση σε στάση{#if note}, από τις θέσεις GPS {note.period} ({note.samples} μετρήσεις,
-      τουλάχιστον {note.min} ανά κομμάτι){/if}. Μετράει και την ώρα στις στάσεις: είναι ταχύτητα λεωφορείου, όχι κίνηση
-      αυτοκινήτων. Πάτα ένα κομμάτι για km/h.
-    </p>
+    <summary>{#if note}{tr(note.period)} · {tr(note.samples)}{tr(" μετρήσεις · μαζί με τις στάσεις")}{:else}{tr("Φόρτωση…")}{/if}</summary>
+    <p>{tr("\r\n      Διάμεση ταχύτητα ανά κομμάτι από στάση σε στάση")}{#if note}{tr(", από τις θέσεις GPS ")}{tr(note.period)} ({tr(note.samples)}{tr(" μετρήσεις,\r\n      τουλάχιστον ")}{tr(note.min)}{tr(" ανά κομμάτι)")}{/if}{tr(". Μετράει και την ώρα στις στάσεις: είναι ταχύτητα λεωφορείου, όχι κίνηση\r\n      αυτοκινήτων. Πάτα ένα κομμάτι για km/h.\r\n    ")}</p>
   </details>
 </section>
 

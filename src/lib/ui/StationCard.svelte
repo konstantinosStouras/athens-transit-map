@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr } from "../i18n.svelte";
   import type { AppState } from "../state.svelte";
   import MetroToggles from "./MetroToggles.svelte";
 
@@ -11,15 +12,14 @@
 <svelte:window onkeydown={e => { if (e.key === "Escape" && app.metroStation) app.selectStation(null); }} />
 
 {#if station}
-  <section class="card" aria-live="polite" aria-label="Σταθμός {station.name}">
+  <section class="card" aria-live="polite" aria-label={tr("Σταθμός " + (station.name))}>
     <header>
-      <h2>{station.name}</h2>
-      <button type="button" class="close" aria-label="Κλείσιμο" onclick={() => app.selectStation(null)}>×</button>
+      <h2>{tr(station.name)}</h2>
+      <button type="button" class="close" aria-label={tr("Κλείσιμο")} onclick={() => app.selectStation(null)}>×</button>
     </header>
-    <p>Άνοιξε μια γραμμή για να φαίνεται η διαδρομή της.</p>
+    <p>{tr("Άνοιξε μια γραμμή για να φαίνεται η διαδρομή της.")}</p>
     <MetroToggles {app} ids={station.lines} />
-    <p class="hide"><button type="button" class="link" onclick={() => app.setStationsOn(false)}>Κρύψε τους σταθμούς</button>
-      Ξανά από το κουμπί με το μάτι → Μετρό.</p>
+    <p class="hide"><button type="button" class="link" onclick={() => app.setStationsOn(false)}>{tr("Κρύψε τους σταθμούς")}</button>{tr("\r\n      Ξανά από το κουμπί με το μάτι → Μετρό.")}</p>
   </section>
 {/if}
 

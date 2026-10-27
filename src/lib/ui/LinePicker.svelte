@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr } from "../i18n.svelte";
   import { tick, type Snippet } from "svelte";
   import { searchLines } from "../search";
   import { MAX_LINES } from "../selection";
@@ -88,7 +89,7 @@
 
 <div class="picker" class:chipped={app.selected.length > 0} class:folded={!showInput}>
   {#if app.selected.length}
-    <ul class="chips" aria-label="Επιλεγμένες γραμμές">
+    <ul class="chips" aria-label={tr("Επιλεγμένες γραμμές")}>
       {#each app.selected as id (id)}
         {@const info = app.lineInfo.get(id)}
         {@const st = chipState(id)}
@@ -96,13 +97,13 @@
           <button
             type="button"
             class="chip"
-            style:--c={app.lineColor(id).bg}
-            style:--t={app.lineColor(id).fg}
-            title={st?.title ?? info?.name}
-            aria-label="Αφαίρεση γραμμής {id}"
+            style:--c={tr(app.lineColor(id).bg)}
+            style:--t={tr(app.lineColor(id).fg)}
+            title={tr((st?.title ?? info?.name))}
+            aria-label={tr("Αφαίρεση γραμμής " + (id))}
             onclick={() => app.toggleLine(id)}
           >
-            {id}{#if st}<span class="st">{st.icon}</span>{/if}<span class="x" aria-hidden="true">×</span>
+            {tr(id)}{#if st}<span class="st">{tr(st.icon)}</span>{/if}<span class="x" aria-hidden="true">×</span>
           </button>
         </li>
       {/each}
@@ -114,8 +115,7 @@
     <button type="button" class="find" onclick={onsearch}>
       <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
         <circle cx="8.5" cy="8.5" r="5.5" /><path d="M12.6 12.6L17 17" />
-      </svg>Γραμμή ή περιοχή
-    </button>
+      </svg>{tr("Γραμμή ή περιοχή\r\n    ")}</button>
   {/if}
   {#if showInput}
   <input
@@ -125,9 +125,9 @@
     enterkeyhint="search"
     autocomplete="off"
     spellcheck="false"
-    placeholder={full ? "Έως 5 γραμμές ταυτόχρονα" : "Γραμμή ή περιοχή, π.χ. 040, Πειραιάς"}
+    placeholder={tr((full ? "Έως 5 γραμμές ταυτόχρονα" : "Γραμμή ή περιοχή, π.χ. 040, Πειραιάς"))}
     role="combobox"
-    aria-label="Αναζήτηση γραμμής"
+    aria-label={tr("Αναζήτηση γραμμής")}
     aria-expanded={open}
     aria-controls="line-list"
     aria-autocomplete="list"
@@ -140,35 +140,35 @@
 
   {#if expanded && favs.length && !open}
     <!-- Starred lines: each chip shows or hides its line, so several are a tap each. -->
-    <div class="quick" role="group" aria-label="Αγαπημένες γραμμές">
+    <div class="quick" role="group" aria-label={tr("Αγαπημένες γραμμές")}>
       <span aria-hidden="true">★</span>
       {#each favs as id (id)}
         {@const on = app.selected.includes(id)}
-        <button type="button" class="fav" style:--c={app.lineColor(id).bg} style:--t={app.lineColor(id).fg} aria-pressed={on}
-          aria-label="{on ? 'Απόκρυψη' : 'Εμφάνιση'} γραμμής {id}" onclick={() => app.toggleLine(id)}>{id}</button>
+        <button type="button" class="fav" style:--c={tr(app.lineColor(id).bg)} style:--t={tr(app.lineColor(id).fg)} aria-pressed={on}
+          aria-label={tr((on ? 'Απόκρυψη' : 'Εμφάνιση') + " γραμμής " + (id))} onclick={() => app.toggleLine(id)}>{tr(id)}</button>
       {/each}
       {#if favs.length > 1 && favsOff}
-        <button type="button" class="all" onclick={() => app.showFavorites()}>Όλες</button>
+        <button type="button" class="all" onclick={() => app.showFavorites()}>{tr("Όλες")}</button>
       {/if}
     </div>
   {:else if expanded && !app.selected.length && quick.length && !open}
     <div class="quick">
-      <span>Δημοφιλείς:</span>
+      <span>{tr("Δημοφιλείς:")}</span>
       {#each quick as id (id)}
-        <button type="button" class="q" style:--c={app.lineInfo.get(id)?.color} onclick={() => pick(id)}>{id}</button>
+        <button type="button" class="q" style:--c={tr(app.lineInfo.get(id)?.color)} onclick={() => pick(id)}>{tr(id)}</button>
       {/each}
     </div>
-    <div class="tip">Πάτα ☆ σε μια γραμμή της λίστας για να μπει στις αγαπημένες.</div>
+    <div class="tip">{tr("Πάτα ☆ σε μια γραμμή της λίστας για να μπει στις αγαπημένες.")}</div>
   {/if}
 
   {#if open && showInput}
-    <ul id="line-list" class="list" role="listbox" aria-label="Γραμμές" aria-multiselectable="true" bind:this={list}>
+    <ul id="line-list" class="list" role="listbox" aria-label={tr("Γραμμές")} aria-multiselectable="true" bind:this={list}>
       {#if app.linesFailed}
-        <li class="empty">Δεν φορτώθηκε η λίστα γραμμών. Δοκίμασε ξανά σε λίγο.</li>
+        <li class="empty">{tr("Δεν φορτώθηκε η λίστα γραμμών. Δοκίμασε ξανά σε λίγο.")}</li>
       {:else if !app.lines.length}
-        <li class="empty">Φόρτωση γραμμών…</li>
+        <li class="empty">{tr("Φόρτωση γραμμών…")}</li>
       {:else if !results.length}
-        <li class="empty">Καμία γραμμή για «{query}»</li>
+        <li class="empty">{tr("Καμία γραμμή για «")}{tr(query)}»</li>
       {/if}
       {#each results as l, i (l.id)}
         {@const sel = app.selected.includes(l.id)}
@@ -184,12 +184,12 @@
           onpointerdown={e => e.preventDefault()}
           onclick={() => pick(l.id)}
         >
-          <span class="id" style:--c={app.lineColor(l.id).bg} style:--t={app.lineColor(l.id).fg}>{l.id}</span>
-          <span class="name">{l.name}</span>
+          <span class="id" style:--c={tr(app.lineColor(l.id).bg)} style:--t={tr(app.lineColor(l.id).fg)}>{tr(l.id)}</span>
+          <span class="name">{tr(l.name)}</span>
           {#if sel}<span class="check" aria-hidden="true">✓</span>{/if}
           <button type="button" class="star" class:on={star} tabindex="-1" aria-pressed={star}
-            aria-label="{star ? 'Αφαίρεση από' : 'Προσθήκη στις'} αγαπημένες: {l.id}" title="Αγαπημένη (πλήκτρο *)"
-            onclick={e => { e.stopPropagation(); app.toggleFavorite(l.id); }}>{star ? "★" : "☆"}</button>
+            aria-label={tr((star ? 'Αφαίρεση από' : 'Προσθήκη στις') + " αγαπημένες: " + (l.id))} title={tr("Αγαπημένη (πλήκτρο *)")}
+            onclick={e => { e.stopPropagation(); app.toggleFavorite(l.id); }}>{tr(star ? "★" : "☆")}</button>
         </li>
       {/each}
     </ul>

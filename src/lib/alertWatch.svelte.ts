@@ -2,6 +2,7 @@
 // a card in the panel until dismissed, a system notification when allowed (not for a push alert: the bot
 // sends that one), a vibration.
 
+import { t } from "./i18n.svelte";
 import { untrack } from "svelte";
 import { AlertWatch } from "./alerts";
 import type { AppState } from "./state.svelte";
@@ -21,12 +22,12 @@ export function watchAlerts(app: AppState) {
 async function notify(text: string, pushed: boolean) {
   navigator.vibrate?.([200, 100, 200]);
   if (pushed || typeof Notification === "undefined" || Notification.permission !== "granted") return;
-  const opts = { body: text, tag: text, icon: `${import.meta.env.BASE_URL}favicon.svg` };
+  const opts = { body: t(text), tag: text, icon: `${import.meta.env.BASE_URL}favicon.svg` };
   try {
     // The worker registered with the alert may still be starting: wait for it a little.
     const reg = await navigator.serviceWorker?.getRegistration();
     const ready = reg && (reg.active ? reg : await Promise.race([navigator.serviceWorker.ready, new Promise<null>(r => setTimeout(r, 5000, null))]));
-    if (ready) await ready.showNotification("Λεωφορείο", opts);
-    else if (!reg) new Notification("Λεωφορείο", opts);
+    if (ready) await ready.showNotification(t("Λεωφορείο"), opts);
+    else if (!reg) new Notification(t("Λεωφορείο"), opts);
   } catch { /* the card in the page is still there */ }
 }

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t as tr } from "../i18n.svelte";
   import { dayMonth } from "../format";
   import { GTFS_PAGE } from "../sources";
 
@@ -14,16 +15,14 @@
 <svelte:window onpointerdown={e => { if (open && !(e.target as Element).closest?.(".old, .more")) open = false; }}
   onkeydowncapture={e => { if (e.key === "Escape" && open) { open = false; e.stopPropagation(); chip?.focus(); } }} />
 
-<button type="button" class="old" bind:this={chip} aria-expanded={open} aria-controls="old-note" onclick={() => (open = !open)}>
-  ⚠ Παλιό πρόγραμμα <svg viewBox="0 0 12 8" width="9" height="6" aria-hidden="true" class={{ up: open }}><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
+<button type="button" class="old" bind:this={chip} aria-expanded={open} aria-controls="old-note" onclick={() => (open = !open)}>{tr("\r\n  ⚠ Παλιό πρόγραμμα ")}<svg viewBox="0 0 12 8" width="9" height="6" aria-hidden="true" class={{ up: open }}><path d="M1 1.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
 </button>
 {#if open}
-  <div class="more" id="old-note" role="region" aria-label="Παλιό πρόγραμμα ΟΑΣΑ">
-    <p><b>Το πρόγραμμα του ΟΑΣΑ έληξε στις {dayMonth(ended)}.</b> Οι θέσεις των οχημάτων είναι ζωντανές· οι καθυστερήσεις
-      και τα δρομολόγια βγαίνουν από το παλιό πρόγραμμα, άρα είναι κατά προσέγγιση. Μόλις βγει νέο, ο χάρτης το παίρνει μόνος του.</p>
+  <div class="more" id="old-note" role="region" aria-label={tr("Παλιό πρόγραμμα ΟΑΣΑ")}>
+    <p><b>{tr("Το πρόγραμμα του ΟΑΣΑ έληξε στις ")}{tr(dayMonth(ended))}.</b>{tr(" Οι θέσεις των οχημάτων είναι ζωντανές· οι καθυστερήσεις\r\n      και τα δρομολόγια βγαίνουν από το παλιό πρόγραμμα, άρα είναι κατά προσέγγιση. Μόλις βγει νέο, ο χάρτης το παίρνει μόνος του.")}</p>
     <p class="links">
-      <a href={GTFS_PAGE} target="_blank" rel="noopener">Το αρχείο στο data.gov.gr</a>
-      <button type="button" onclick={() => { open = false; onmore(); }}>Περισσότερα</button>
+      <a href={GTFS_PAGE} target="_blank" rel="noopener">{tr("Το αρχείο στο data.gov.gr")}</a>
+      <button type="button" onclick={() => { open = false; onmore(); }}>{tr("Περισσότερα")}</button>
     </p>
   </div>
 {/if}
