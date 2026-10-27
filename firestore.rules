@@ -1,6 +1,19 @@
 rules_version = '2';
 service cloud.firestore {
  match /databases/{database}/documents {
+  match /users/{uid} {
+   function owner() { return request.auth != null && request.auth.uid == uid && request.auth.token.email_verified == true; }
+   allow read: if owner();
+   allow create, update: if owner()
+    && request.resource.data.keys().hasAll(['language', 'favorites', 'updatedAt'])
+    && request.resource.data.keys().hasOnly(['language', 'favorites', 'updatedAt'])
+    && request.resource.data.language in ['el', 'en']
+    && request.resource.data.favorites is list
+    && request.resource.data.favorites.size() <= 200
+    && request.resource.data.favorites.toSet().size() == request.resource.data.favorites.size()
+    && request.resource.data.updatedAt == request.time;
+   allow delete: if owner();
+  }
   function imageSize(images, n) { return images.size() > n ? images[n].size() : 0; }
   function imageValid(images, n) { return images.size() <= n || (images[n] is string && images[n].matches('data:image/jpeg;base64,[A-Za-z0-9+/]+=*')); }
   match /feedback/{ticket} {

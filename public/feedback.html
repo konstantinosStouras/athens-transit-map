@@ -10,7 +10,7 @@
 .languages{display:flex;gap:6px;justify-content:flex-end;margin-bottom:20px}.languages button{min-width:48px;min-height:44px;border:1px solid var(--border);border-radius:10px;background:var(--surface);cursor:pointer}.languages button[aria-pressed=true]{background:var(--link);border-color:var(--link)}.languages img{display:block;margin:auto}button:focus-visible{outline:3px solid var(--link);outline-offset:4px}
 </style>
 </head>
-<body>
+<body><div class="account-nav" style="display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;padding:12px 22px;font:600 13px system-ui"><a id="account-link" href="./?account=1" style="padding:10px 12px;border:1px solid currentColor;border-radius:10px;min-height:44px;box-sizing:border-box">Σύνδεση / Εγγραφή</a><span id="account-sync-status" role="status" style="font-size:12px"></span></div>
 <div class="languages" role="group" aria-label="Language"><button type="button" data-lang="el" lang="el" aria-label="Ελληνικά"><img src="flags/el.svg" width="27" height="18" alt=""></button><button type="button" data-lang="en" lang="en" aria-label="English"><img src="flags/en.svg" width="27" height="18" alt=""></button></div>
 <p><a id="submit-feedback" href="submit-feedback.html">Στείλε νέο σχόλιο με εικόνα / Send feedback with a screenshot ↗</a></p>
 <nav><a id="back" href="./?lang=en">← Back to the live map</a><a id="updates" href="updates.html?lang=en">What's new</a></nav>
@@ -76,5 +76,5 @@ if(!visible.length){const tr=document.createElement('tr'),td=document.createElem
 }
 document.querySelectorAll('[data-lang]').forEach(button=>button.addEventListener('click',()=>{lang=button.dataset.lang;render()}));category.addEventListener('change',render);showAll.addEventListener('change',render);render();
 </script>
-</body>
+<script type="module" src="account-preferences.js"></script></body>
 </html>

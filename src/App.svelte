@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { Account } from "./lib/account.svelte";
+  import AccountDialog from "./lib/ui/AccountDialog.svelte";
   import { AppState } from "./lib/state.svelte";
   import MapView from "./lib/map/MapView.svelte";
   import Panel from "./lib/ui/Panel.svelte";
@@ -13,12 +16,19 @@
     document.title = t("Λεωφορεία ΟΑΣΑ") + " · Live";
   });
   const app = new AppState();
-  app.init();
+  const account = new Account(app);
+  onMount(() => account.start());
+  let started = false;
+  $effect(() => { if (account.allowed && !started) { started = true; app.init(); } });
+  $effect(() => account.sync(locale.language, app.favorites));
   $effect(() => applyTheme(app.theme));
   if (import.meta.env.DEV) Object.assign(window, { __app: app });
 </script>
 
+{#if account.allowed}
 <MapView {app} />
 <Panel {app} />
 <InfoCard {app} />
 <StationCard {app} />
+{/if}
+<AccountDialog {account} />

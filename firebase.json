@@ -1,1 +1,17 @@
-{"firestore":{"rules":"firestore.rules"}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "OASA Live",
+        "supportEmail": "kstouras@gmail.com",
+        "authorizedRedirectUris": [
+          "https://stouras-oasa-live.firebaseapp.com/__/auth/handler"
+        ]
+      }
+    }
+  }
+}
