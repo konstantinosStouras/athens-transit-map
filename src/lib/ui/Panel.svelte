@@ -113,6 +113,7 @@
     <button type="button" lang="en" aria-label="English" aria-pressed={locale.language === "en"} onclick={() => setLanguage("en")}><img src={`${import.meta.env.BASE_URL}flags/en.svg`} alt="" width="27" height="18" /></button>
   </div>
   <div class="brand"><span>{tr("ΟΑΣΑ · Live")}</span><a href={`${import.meta.env.BASE_URL}updates.html?lang=${locale.language}`}>{tr("Τι νέο υπάρχει ↗")}</a></div>
+  <a class="feedback-link" href={`${import.meta.env.BASE_URL}submit-feedback.html?lang=${locale.language}`}>{tr("Στείλε σχόλιο με εικόνα ↗")}</a>
   <a class="feedback-link" href={`${import.meta.env.BASE_URL}feedback.html?lang=${locale.language}`}>{tr("Σχόλια μέχρι σήμερα ↗")}</a>
   <h1 class="sr">{tr("Λεωφορεία ΟΑΣΑ")}</h1>
   <nav class="primary" aria-label={tr("Βασικές ενέργειες")}>

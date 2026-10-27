@@ -1,0 +1,1 @@
+export const feedbackConfig = {projectId:"stouras-oasa-live",appId:"1:449869894186:web:09a2007e16ad7b33e1e953",apiKey:"AIzaSyBsAqhkIbJqCEBwHFuSu8Fuy311VCkWBAM",authDomain:"stouras-oasa-live.firebaseapp.com",messagingSenderId:"449869894186"};

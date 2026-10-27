@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function imageSize(images, n) { return images.size() > n ? images[n].size() : 0; }
+  function imageValid(images, n) { return images.size() <= n || (images[n] is string && images[n].matches('data:image/jpeg;base64,[A-Za-z0-9+/]+=*')); }
+  match /feedback/{ticket} {
+   allow create: if request.resource.data.keys().hasOnly(['text','images','name','email','uid','ticket','page','url','ua','forwarded','status','createdAt'])
+    && ticket.matches('OASA-[0-9]{6}-[A-F0-9]{12}')
+    && request.resource.data.ticket == ticket
+    && request.resource.data.text is string && request.resource.data.text.size() > 12 && request.resource.data.text.size() <= 18012
+    && request.resource.data.images is list && request.resource.data.images.size() <= 3
+    && imageValid(request.resource.data.images, 0) && imageValid(request.resource.data.images, 1) && imageValid(request.resource.data.images, 2)
+    && imageSize(request.resource.data.images, 0) + imageSize(request.resource.data.images, 1) + imageSize(request.resource.data.images, 2) <= 716800
+    && request.resource.data.name is string && request.resource.data.name.size() <= 200
+    && request.resource.data.email is string && request.resource.data.email.size() <= 200
+    && request.resource.data.url is string && request.resource.data.url.size() <= 2000
+    && request.resource.data.page == 'oasa-live-feedback'
+    && request.resource.data.uid == null && request.resource.data.ua == ''
+    && request.resource.data.forwarded == false && request.resource.data.status == 'new'
+    && request.resource.data.createdAt == request.time;
+   allow read, update, delete: if false;
+  }
+ }
+}
