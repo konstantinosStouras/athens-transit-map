@@ -16,6 +16,7 @@
   import { encodeAlert, type Rep } from "../tglink";
   import type { AppState } from "../state.svelte";
   import Bell from "./Bell.svelte";
+  import VehicleType from "./VehicleType.svelte";
   import { walkUrl } from "../maps";
   import { alertTargets, anyMetro, boardings, centre, distM, findTransfers, findTrips, geocode, legTrip, loadTripIndex, metroDirect, metroPlaces, nearestStation, places, searchPlaces,
     suggest, termini, toggleTripLine, type Pt, type TripIndex, type TripLine, type TripTransfer } from "../trip";
@@ -455,6 +456,7 @@
               onclick={() => toggleTripLine(app, t)}>{tr(t.line)}</button>
             <button type="button" class="pick" aria-pressed={picked === t.line} title={tr("Μόνο αυτή στον χάρτη, με τις στάσεις της")} onclick={() => solo(t)}>
               <span><b>{tr(mins(t.min))}</b> {tr(stop(v.from))} → {tr(offAt(v.to))}</span>
+              <VehicleType kind={info?.kind} />
               <small>{#if going(t)}{tr("προς ")}{tr(going(t))} · {/if}{tr(t.stops)} {tr(t.stops === 1 ? "στάση" : "στάσεις")}{#if k >= MAX_LINES}{tr(" · εκτός χάρτη (έως ")}{tr(MAX_LINES)}){/if}</small>
               <small class="walking">🚶 {locale.language === "en" ? "Walking" : "Περπάτημα"}: {tr(metres(t.walk))} {locale.language === "en" ? "(straight-line estimate)" : "(εκτίμηση σε ευθεία)"}</small>
             </button>
@@ -476,6 +478,7 @@
               </span>
               <button type="button" class="pick" aria-pressed={picked === xkey(x)} title={tr("Αυτές οι δύο στον χάρτη, με τις στάσεις")} onclick={() => pickXfer(x)}>
                 <span><b>{tr(mins(x.min))}</b> {tr(stop(a.from))} → {tr(stop(a.to))}{tr(", αλλαγή: ")}{tr(stop(b.from))} → {tr(offAt(b.to))}</span>
+                <span><VehicleType kind={app.lineInfo.get(a.line)?.kind} /> → <VehicleType kind={app.lineInfo.get(b.line)?.kind} /></span>
                 <small>{tr(a.stops + b.stops)}{tr(" στάσεις · με ~5′ αναμονή")}</small>
                 <small class="walking">🚶 {locale.language === "en" ? "Walking" : "Περπάτημα"}: {tr(metres(x.walk + x.xfer))} {locale.language === "en" ? "(straight-line estimate, including transfer)" : "(εκτίμηση σε ευθεία, μαζί με την αλλαγή)"}</small>
               </button>

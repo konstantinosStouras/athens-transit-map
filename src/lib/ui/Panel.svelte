@@ -11,6 +11,7 @@
   import LinePicker from "./LinePicker.svelte";
   import MetroToggles from "./MetroToggles.svelte";
   import StatusBanner from "./StatusBanner.svelte";
+  import VehicleType from "./VehicleType.svelte";
 
   let { app, install, onaccount, signedIn }: { app: AppState; install: InstallState; onaccount: () => void; signedIn: boolean } = $props();
 
@@ -255,6 +256,7 @@
     {#each app.selected as id (id)}
       <div class="line-summary">
         <strong>{tr(id)} · {tr(nameOf(app.lineInfo.get(id)) || "Φόρτωση γραμμής…")}</strong>
+        <VehicleType kind={app.lineInfo.get(id)?.kind} />
         {#if app.statics[id]}
           <div class="direction-actions" aria-label={tr((`Κατευθύνσεις γραμμής ${id}`))}>
             <button type="button" aria-pressed={!app.focus[id]} onclick={() => app.setFocus(id, null)}>{tr("Και οι δύο κατευθύνσεις")}</button>

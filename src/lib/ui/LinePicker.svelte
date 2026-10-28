@@ -4,6 +4,7 @@
   import { searchLines } from "../search";
   import { MAX_LINES } from "../selection";
   import type { AppState } from "../state.svelte";
+  import VehicleType from "./VehicleType.svelte";
 
   // expanded: the panel's dropdown is open, which is where the quick picks (favourites, popular) show.
   // Folded, the search field is hidden until searchOpen (the panel's magnifier, or the field below, was pressed);
@@ -182,6 +183,7 @@
         >
           <span class="id" style:--c={tr(app.lineColor(l.id).bg)} style:--t={tr(app.lineColor(l.id).fg)}>{tr(l.id)}</span>
           <span class="name">{nameOf(l)}</span>
+          <VehicleType kind={l.kind} />
           {#if sel}<span class="check" aria-hidden="true">✓</span>{/if}
           <button type="button" class="star" class:on={star} tabindex="-1" aria-pressed={star}
             aria-label={tr((star ? 'Αφαίρεση από' : 'Προσθήκη στις') + " αγαπημένες: " + (l.id))} title={tr("Αγαπημένη (πλήκτρο *)")}
@@ -221,7 +223,7 @@
   .list li.empty { color: var(--muted); cursor: default; }
   .id { flex: none; min-width: 44px; padding: 2px 6px; border-radius: 6px; background: var(--c); color: var(--t);
     font-weight: 700; text-align: center; font-size: 13px; }
-  .name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .name { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; }
   .check { color: var(--accent); font-weight: 700; }
   .star { flex: none; width: 44px; height: 44px; margin: -4px -4px -4px 0; border: 0; border-radius: 8px; background: none;
     color: var(--muted); font-size: 18px; cursor: pointer; }

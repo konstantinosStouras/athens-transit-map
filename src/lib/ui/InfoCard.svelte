@@ -7,6 +7,7 @@
   import { clampDrag, settle, type SheetState } from "../sheet";
   import type { AppState } from "../state.svelte";
   import type { DirectionGroup } from "../directions";
+  import VehicleType from "./VehicleType.svelte";
 
   let { app }: { app: AppState } = $props();
 
@@ -138,6 +139,7 @@
         aria-label={tr((sheet === "open" ? "Σύμπτυξη λεπτομερειών" : "Ανάπτυξη λεπτομερειών"))} onclick={e => { if (e.detail === 0) sheet = flip(sheet); }}><span></span></button>
       <header>
         <span class="pill" style:--c={tr(app.lineColor(line).bg)} style:--t={tr(app.lineColor(line).fg)}>{tr(line)}</span>
+        <VehicleType kind={info?.kind} />
         <h2>{tr(vehicle ? (groupOf(vehicle.groups, vehicle.v.variant)?.to ? `→ ${groupOf(vehicle.groups, vehicle.v.variant)?.to}` : nameOf(info)) : route ? `→ ${route.to}` : "")}</h2>
         <button type="button" class="star" class:on={starred} aria-pressed={starred} title={tr((starred ? "Αφαίρεση από τις αγαπημένες" : "Προσθήκη στις αγαπημένες"))}
           aria-label={tr((starred ? `Αφαίρεση της γραμμής ${line} από τις αγαπημένες` : `Προσθήκη της γραμμής ${line} στις αγαπημένες`))}

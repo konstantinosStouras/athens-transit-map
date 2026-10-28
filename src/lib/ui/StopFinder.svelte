@@ -6,6 +6,7 @@
   import { approachingStop, findStops, indexStops, type StopPoint, type StopService } from "../stops";
   import { ago, gtfsEnded } from "../format";
   import type { AppState } from "../state.svelte";
+  import VehicleType from "./VehicleType.svelte";
   let { app, seed = null, onclose }: { app: AppState; seed?: { name: string; lat: number; lon: number } | null; onclose: () => void } = $props();
   const en = $derived(locale.language === "en");
   let points = $state.raw<StopPoint[]>([]);
@@ -107,7 +108,7 @@
           {@const followed = app.selected.includes(service.line)}
           {@const blocked = !known || (!followed && app.selected.length >= 5)}
           {@const vehicles = mismatch || !app.status || app.statusFailed ? [] : group.services.flatMap(s => approachingStop(selected!, s, app.live[s.line], app.statics[s.line], app.serverNow / 1000)).sort((a,b) => a.stopsAway - b.stopsAway).slice(0,3)}
-          <article><h4>{service.line} → {nameOf({ name: service.destination, name_en: service.destination_en })}</h4>
+          <article><h4>{service.line} → {nameOf({ name: service.destination, name_en: service.destination_en })}</h4><VehicleType kind={app.lineInfo.get(service.line)?.kind} />
             {#if !service.boarding}<p class="note">{en ? "Terminates here; no boarding in this direction." : "Τερματίζει εδώ· δεν υπάρχει επιβίβαση σε αυτή την κατεύθυνση."}</p>{/if}
             <button type="button" disabled={blocked} onclick={() => follow(group.services)}>{followed ? (en ? "Show direction" : "Εμφάνιση κατεύθυνσης") : !service.boarding ? (en ? "Show arriving direction" : "Εμφάνιση κατεύθυνσης άφιξης") : (en ? "Follow this direction" : "Ακολούθησε την κατεύθυνση")}</button>
             {#if blocked}<p class="note">{!known ? (en ? "Not available in the current line index." : "Δεν υπάρχει στο τρέχον αρχείο γραμμών.") : (en ? "You can follow up to five lines. Remove one to add this line." : "Μπορείς να ακολουθείς έως πέντε γραμμές. Αφαίρεσε μία για να προσθέσεις αυτή.")}</p>{/if}
