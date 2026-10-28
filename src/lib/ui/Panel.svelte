@@ -439,6 +439,9 @@
         {/if}
         <section>
           <h4>{tr("Μετρό, ΗΣΑΠ και τραμ")}</h4>
+          {#if import.meta.env.VITE_RAIL_REALTIME_URL?.trim()}
+            <p class="hint">{locale.language === "en" ? "Blue numbered circles are recent live rail positions when the configured feed is available. Tracks and stations are static." : "Οι μπλε αριθμημένοι κύκλοι δείχνουν πρόσφατες ζωντανές θέσεις συρμών όταν η συνδεδεμένη πηγή είναι διαθέσιμη. Οι γραμμές και οι σταθμοί είναι στατικοί."}</p>
+          {/if}
           <label class="switch">
             <input type="checkbox" checked={app.stationsOn} onchange={e => app.setStationsOn(e.currentTarget.checked)} />
             <span>{tr("Σταθμοί στον χάρτη")}<br /><small>{tr("Κλειστό: κρύβονται οι σταθμοί (οι γραμμές που άνοιξες μένουν).")}</small></span>

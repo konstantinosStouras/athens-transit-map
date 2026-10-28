@@ -10,6 +10,7 @@
   import type { LngLat } from "../glide";
   import { vehicleHeading } from "../heading";
   import { metroFC } from "../metro";
+  import { parseRailFeed, railVehicleFC, type RailFeed } from "../rail-realtime";
   import { Locator, userPlan, type Fix, type LocState } from "../locate";
   import { Mover, planOnto } from "../motion";
   import { shapeLength, stopOffsets } from "../predict";
@@ -27,6 +28,8 @@
   setWorkerUrl(workerUrl);
 
   let { app }: { app: AppState } = $props();
+  let railFeed = $state.raw<RailFeed | null>(null);
+  const railUrl = import.meta.env.VITE_RAIL_REALTIME_URL?.trim();
 
   const FOLLOW_VIEW_MS = 2000;   // following the user: the view is reported this often
   const VIEW_SETTLE_MS = 300;   // the map must rest this long before the city layer asks for tiles
@@ -204,6 +207,12 @@
       layout: { "text-field": ["coalesce", ["get", "display_name"], ["get", "name"]], "text-font": ["Noto Sans Bold"], "text-size": 11,
         "text-offset": [0, 1.1], "text-anchor": "top", "text-optional": true, visibility: stationVis },
       paint: { "text-color": "#333333", "text-halo-color": "#ffffff", "text-halo-width": 1.5 } });
+    m.addSource("rail-live", { type: "geojson", data: EMPTY });
+    m.addLayer({ id: "rail-live-dot", type: "circle", source: "rail-live",
+      paint: { "circle-radius": 12, "circle-color": "#0876d8", "circle-stroke-color": "#ffffff", "circle-stroke-width": 2 } });
+    m.addLayer({ id: "rail-live-label", type: "symbol", source: "rail-live",
+      layout: { "text-field": ["get", "line"], "text-font": ["Noto Sans Bold"], "text-size": 10,
+        "text-allow-overlap": true, "text-ignore-placement": true }, paint: { "text-color": "#ffffff" } });
   }
 
   // My location's accuracy circle: a circle in map metres, px = metres · 2^zoom / metres-per-pixel at zoom 0.
@@ -762,6 +771,41 @@
     if (!loaded) return;
     const data = app.metro;
     (map!.getSource("metro") as GeoJSONSource).setData(data ? metroFC(data, app.metroLines, app.metroStation, locale.language) : EMPTY);
+  });
+
+  // No request is made without a configured endpoint and at least one shown rail line.
+  $effect(() => {
+    const lines = app.metro?.lines.map(line => line.id) ?? [];
+    const enabled = !!railUrl && app.metroLines.length > 0 && lines.length > 0;
+    if (!enabled) { railFeed = null; return; }
+    let url: URL;
+    try {
+      url = new URL(railUrl!, window.location.href);
+      if (url.protocol !== "https:" || url.username || url.password) return;
+    } catch { return; }
+    let disposed = false;
+    let controller: AbortController | null = null;
+    const refresh = async () => {
+      if (document.hidden || controller) return;
+      const request = controller = new AbortController();
+      const timeout = setTimeout(() => request.abort(), 10_000);
+      try {
+        const response = await fetch(url, { signal: request.signal, cache: "no-store" });
+        const parsed = response.ok ? parseRailFeed(await response.json(), new Set(lines), Date.now() / 1000) : null;
+        if (!disposed && !request.signal.aborted) railFeed = parsed;
+      } catch { if (!disposed) railFeed = null; }
+      finally { clearTimeout(timeout); if (controller === request) controller = null; }
+    };
+    const visible = () => { if (!document.hidden) void refresh(); };
+    void refresh();
+    const timer = setInterval(() => void refresh(), 30_000);
+    document.addEventListener("visibilitychange", visible);
+    return () => { disposed = true; controller?.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", visible); };
+  });
+
+  $effect(() => {
+    if (!loaded) return;
+    (map!.getSource("rail-live") as GeoJSONSource).setData(railVehicleFC(railFeed, app.metroLines, app.now / 1000));
   });
 
   // The trip planner's start (A) and end (B).
