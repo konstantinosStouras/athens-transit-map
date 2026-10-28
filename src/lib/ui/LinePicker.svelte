@@ -203,7 +203,7 @@
   /* The panel's buttons: beside the chips, or, with no chips, beside the search. */
   .tail { grid-column: 2; grid-row: 1; display: flex; align-items: center; gap: 2px; margin: -4px -6px 0 0; }
   .picker:not(.chipped) input, .find { grid-column: 1; grid-row: 1; }
-  .find { display: inline-flex; align-items: center; justify-self: start; gap: 6px; min-height: 44px; padding: 0 12px;
+  .find { display: inline-flex; align-items: center; justify-self: stretch; gap: 6px; min-height: 44px; padding: 0 12px;
     border: 0; border-radius: 18px; background: var(--control); color: var(--muted); font-size: 13px; cursor: pointer; }
   .find:hover { background: var(--control-hover); }
   .quick, .tip { grid-column: 1 / -1; }
@@ -229,7 +229,7 @@
     font-weight: 700; text-align: center; font-size: 13px; }
   .name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .check { color: var(--accent); font-weight: 700; }
-  .star { flex: none; width: 36px; height: 36px; margin: -4px -4px -4px 0; border: 0; border-radius: 8px; background: none;
+  .star { flex: none; width: 44px; height: 44px; margin: -4px -4px -4px 0; border: 0; border-radius: 8px; background: none;
     color: var(--muted); font-size: 18px; cursor: pointer; }
   .star:hover { background: var(--control); }
   .star.on { color: #f59f00; }

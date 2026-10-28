@@ -27,7 +27,7 @@
 
 {#if account.allowed}
 <MapView {app} />
-<Panel {app} />
+<Panel {app} signedIn={account.verified} onaccount={() => account.open = true} />
 <InfoCard {app} />
 <StationCard {app} />
 {/if}

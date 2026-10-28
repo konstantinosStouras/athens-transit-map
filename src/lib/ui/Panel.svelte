@@ -11,7 +11,7 @@
   import MetroToggles from "./MetroToggles.svelte";
   import StatusBanner from "./StatusBanner.svelte";
 
-  let { app }: { app: AppState } = $props();
+  let { app, onaccount, signedIn }: { app: AppState; onaccount: () => void; signedIn: boolean } = $props();
 
   // Phones start compact: the map matters more than the stats at a bus stop.
   let collapsed = $state(matchMedia("(max-width: 719px)").matches);
@@ -108,13 +108,22 @@
   onkeydowncapture={onEscape} />
 
 <section class="panel" class:compact inert={!!pop && pop !== "trip" && narrow.current} aria-label={tr("Πίνακας ελέγχου")}>
-  <div class="language" role="group" aria-label={locale.language === "el" ? "Γλώσσα" : "Language"}>
-    <button type="button" lang="el" aria-label="Ελληνικά" aria-pressed={locale.language === "el"} onclick={() => setLanguage("el")}><img src={`${import.meta.env.BASE_URL}flags/el.svg`} alt="" width="27" height="18" /></button>
-    <button type="button" lang="en" aria-label="English" aria-pressed={locale.language === "en"} onclick={() => setLanguage("en")}><img src={`${import.meta.env.BASE_URL}flags/en.svg`} alt="" width="27" height="18" /></button>
-  </div>
-  <div class="brand"><span>{tr("ΟΑΣΑ · Live")}</span><a href={`${import.meta.env.BASE_URL}updates.html?lang=${locale.language}`}>{tr("Τι νέο υπάρχει ↗")}</a></div>
-  <a class="feedback-link" href={`${import.meta.env.BASE_URL}submit-feedback.html?lang=${locale.language}`}>{tr("Στείλε σχόλιο με εικόνα ↗")}</a>
-  <a class="feedback-link" href={`${import.meta.env.BASE_URL}feedback.html?lang=${locale.language}`}>{tr("Σχόλια μέχρι σήμερα ↗")}</a>
+  <header class="panel-header">
+    <span class="brand">{tr("ΟΑΣΑ · Live")}</span>
+    <div class="language" role="group" aria-label={locale.language === "el" ? "Γλώσσα" : "Language"}>
+      <button type="button" lang="el" aria-label="Ελληνικά" aria-pressed={locale.language === "el"} onclick={() => setLanguage("el")}><img src={`${import.meta.env.BASE_URL}flags/el.svg`} alt="" width="27" height="18" /></button>
+      <button type="button" lang="en" aria-label="English" aria-pressed={locale.language === "en"} onclick={() => setLanguage("en")}><img src={`${import.meta.env.BASE_URL}flags/en.svg`} alt="" width="27" height="18" /></button>
+    </div>
+    <button type="button" class="account-control" class:signed-in={signedIn} onclick={onaccount} aria-label={locale.language === "en" ? (signedIn ? "My account" : "Sign in or register") : (signedIn ? "Ο λογαριασμός μου" : "Σύνδεση ή εγγραφή")} title={locale.language === "en" ? (signedIn ? "My account" : "Sign in or register") : (signedIn ? "Ο λογαριασμός μου" : "Σύνδεση ή εγγραφή")}>
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 21v-2a7.5 7.5 0 0 1 15 0v2"/></svg>
+      <span>{locale.language === "en" ? (signedIn ? "Account" : "Sign in") : (signedIn ? "Λογαριασμός" : "Σύνδεση")}</span>
+    </button>
+  </header>
+  <nav class="shortcuts" aria-label={locale.language === "en" ? "About and feedback" : "Νέα και σχόλια"}>
+    <a href={`${import.meta.env.BASE_URL}updates.html?lang=${locale.language}`} title={tr("Τι νέο υπάρχει ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></svg><span>{locale.language === "en" ? "What’s new" : "Νέα"}</span></a>
+    <a href={`${import.meta.env.BASE_URL}submit-feedback.html?lang=${locale.language}`} title={tr("Στείλε σχόλιο με εικόνα ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5a9.5 9.5 0 1 1 19 0Z"/><path d="M7 9h9M7 13h6"/></svg><span>{locale.language === "en" ? "Feedback" : "Σχόλιο"}</span></a>
+    <a href={`${import.meta.env.BASE_URL}feedback.html?lang=${locale.language}`} title={tr("Σχόλια μέχρι σήμερα ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M16 4a3 3 0 0 1 0 6M19 21v-3a7 7 0 0 0-2-5"/></svg><span>{locale.language === "en" ? "Community" : "Κοινότητα"}</span></a>
+  </nav>
   <h1 class="sr">{tr("Λεωφορεία ΟΑΣΑ")}</h1>
   <nav class="primary" aria-label={tr("Βασικές ενέργειες")}>
     <button type="button" aria-pressed={pop !== "trip"} onclick={() => { pop = null; collapsed = false; searching = true; void tick().then(() => document.querySelector<HTMLInputElement>(".picker input")?.focus()); }}>{tr("⌕ Βρες γραμμή")}</button>
@@ -359,16 +368,22 @@
 </div>
 
 <style>
-  .language { display: flex; gap: 3px; margin-bottom: 8px; }
+  .panel-header { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .brand { font-weight: 800; font-size: 15px; white-space: nowrap; letter-spacing: -.02em; }
+  .language { display: flex; gap: 4px; }
   .language img { display: block; margin: auto; border-radius: 2px; }
-  .language button { min-width: 44px; min-height: 36px; border: 1px solid var(--border); border-radius: 8px; background: var(--control); color: var(--fg); font-weight: 650; cursor: pointer; }
-  .language button[aria-pressed="true"] { background: var(--accent); color: white; border-color: var(--accent); }
-
-  .brand { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 12px; font-weight: 750; }
-  .brand a { font-size: 12px; color: var(--accent); font-weight: 500; padding: 6px 0; }
-  .feedback-link { display: block; width: fit-content; margin: -8px 0 8px; padding: 8px 0; color: var(--accent); font-size: 12px; }
+  .language button { width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 10px; background: var(--control); cursor: pointer; padding: 0; }
+  .language button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
+  .account-control { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 44px; min-height: 44px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--control); color: var(--fg); cursor: pointer; font-size: 12px; font-weight: 650; }
+  .account-control.signed-in { color: var(--accent); border-color: var(--accent); }
+  .shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: 14px; }
+  .shortcuts a { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 7px 5px; border: 1px solid var(--border); border-radius: 10px; background: var(--control); color: var(--muted); text-decoration: none; font-size: 11px; font-weight: 600; text-align: center; line-height: 1.25; }
+  .shortcuts svg, .account-control svg { flex: none; }
+  .shortcuts a:hover, .account-control:hover, .language button:not([aria-pressed="true"]):hover { background: var(--control-hover); color: var(--fg); }
+  .shortcuts a:focus-visible, .account-control:focus-visible, .language button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  @media (max-width: 719px) { .account-control { padding: 0; } .account-control span { display: none; } .brand { font-size: 14px; } .shortcuts a { flex-direction: column; gap: 4px; min-height: 54px; } }
   .primary { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
-  .primary button { min-height: 46px; border-radius: 10px; border: 1px solid var(--border); background: var(--control); cursor: pointer; font-size: 13px; font-weight: 600; }
+  .primary button { min-height: 48px; padding: 9px 8px; line-height: 1.3; border-radius: 10px; border: 1px solid var(--border); background: var(--control); cursor: pointer; font-size: 13px; font-weight: 600; }
   .primary button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: white; }
   .freshness { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 12px; color: var(--muted); }
   .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ontime); flex: none; }
