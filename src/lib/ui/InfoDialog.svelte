@@ -1,13 +1,15 @@
 <script lang="ts">
-  import { t as tr } from "../i18n.svelte";
+  import { t as tr, locale } from "../i18n.svelte";
   import { dayMonth } from "../format";
   import { GTFS_PAGE } from "../sources";
   import SourcesView from "./SourcesView.svelte";
   import LongTermView from "./LongTermView.svelte";
   import StatsView from "./StatsView.svelte";
+  import LiveOverview from "./LiveOverview.svelte";
+  import type { AppState } from "../state.svelte";
 
   // ended: the day the OASA timetable ended, when it is past (explained at the top).
-  let { open = $bindable(false), motion, ended = null }: { open: boolean; motion: boolean; ended?: string | null } = $props();
+  let { open = $bindable(false), tab = $bindable<"sources" | "stats">("sources"), app, motion, ended = null }: { open: boolean; tab?: "sources" | "stats"; app: AppState; motion: boolean; ended?: string | null } = $props();
 
   const TABS = [
     { id: "sources", label: "Πηγές δεδομένων" },
@@ -23,7 +25,6 @@
   let sub = $state<Sub>("day");
 
   let dlg: HTMLDialogElement;
-  let tab = $state<Tab>("sources");
   // The stats tab loads its data once, the first time it is shown; it then keeps it while hidden.
   let statsSeen = $state(false);
   $effect(() => { if (tab === "stats") statsSeen = true; });
@@ -72,9 +73,18 @@
     </div>
 
     <div role="tabpanel" id="info-panel-sources" aria-labelledby="info-tab-sources" hidden={tab !== "sources"}>
+      <section class="data-quality">
+        <h3>{locale.language === "en" ? "What these data can tell you" : "Τι δείχνουν αυτά τα δεδομένα"}</h3>
+        <p>{locale.language === "en" ? "GPS positions, schedule comparisons and speed estimates come from the existing public feed. Missing GPS is not proof a bus did not run. Schedule differences are not predicted arrival times, and independent accuracy is not verified." : "Οι θέσεις GPS, οι συγκρίσεις ωραρίου και οι εκτιμήσεις ταχύτητας προέρχονται από την υπάρχουσα δημόσια πηγή. Η απουσία GPS δεν αποδεικνύει ότι δεν έγινε δρομολόγιο. Οι αποκλίσεις ωραρίου δεν είναι προβλέψεις αφίξεων και η ακρίβεια δεν έχει επαληθευτεί ανεξάρτητα."}</p>
+        {#if app.status}
+          <p>{locale.language === "en" ? "Timetable version:" : "Έκδοση προγράμματος:"} <b>{app.status.gtfs_version}</b> · {locale.language === "en" ? "Valid until:" : "Ισχύει έως:"} <b>{app.status.gtfs_expires}</b></p>
+          {#if app.statusFailed}<p>{locale.language === "en" ? "Last known timetable metadata; the current connection check failed." : "Τελευταία γνωστά στοιχεία προγράμματος· ο τρέχων έλεγχος σύνδεσης απέτυχε."}</p>{/if}
+        {:else}<p>{locale.language === "en" ? "Timetable metadata has not loaded yet." : "Δεν έχουν φορτωθεί ακόμα τα στοιχεία προγράμματος."}</p>{/if}
+      </section>
       <SourcesView {motion} />
     </div>
     <div role="tabpanel" id="info-panel-stats" aria-labelledby="info-tab-stats" hidden={tab !== "stats"}>
+      {#if open && tab === "stats"}<LiveOverview {app} />{/if}
       <div class="tabs sub" role="tablist" aria-label={tr("Στατιστικά")}>
         {#each SUBS as t (t.id)}
           <button type="button" role="tab" id="stats-tab-{t.id}" aria-controls="stats-panel-{t.id}" aria-selected={sub === t.id}
@@ -93,6 +103,9 @@
 </dialog>
 
 <style>
+  .data-quality { margin-bottom: 16px; padding: 12px; background: var(--control); border-radius: 10px; font-size: 13px; }
+  .data-quality h3 { margin: 0; font-size: 14px; }
+  .data-quality p { margin: 8px 0 0; overflow-wrap: anywhere; }
   .sheet { width: min(720px, calc(100% - 32px)); max-height: calc(100% - 48px); padding: 0; border: 1px solid var(--border);
     border-radius: 16px; background: var(--bg); color: var(--fg); box-shadow: var(--shadow); overscroll-behavior: contain; }
   .sheet::backdrop { background: rgba(0, 0, 0, .4); }

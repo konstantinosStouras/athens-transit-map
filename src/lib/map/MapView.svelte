@@ -870,25 +870,26 @@
       if (label) dom.el.setAttribute("aria-label", tr(label));
     }
   });
-  let infoOpen = $state(false);
   let Info = $state.raw<typeof import("../ui/InfoDialog.svelte").default | null>(null);
   let infoLoad: Promise<typeof import("../ui/InfoDialog.svelte").default> | null = null;
-  async function openInfo() {
+  async function loadInfo() {
     infoLoad ??= import("../ui/InfoDialog.svelte").then(m => m.default);
     try {
       Info = await infoLoad;
-      infoOpen = true;
     } catch {
       infoLoad = null;
+      app.infoOpen = false;
       app.notify("Δεν φόρτωσαν οι πληροφορίες. Δοκίμασε ξανά.");
     }
   }
+  function openInfo() { app.infoTab = "sources"; app.infoOpen = true; }
+  $effect(() => { if (app.infoOpen && !Info) void loadInfo(); });
   const ended = $derived(gtfsEnded(app.status?.gtfs_expires));
 </script>
 
 <div class="map" class:no-ages={!app.showAges && app.motion} {@attach setup}></div>
 {#if app.speedOn}<SpeedLegend meta={speedData?.meta ?? null} onclose={() => app.setSpeedOn(false)} />{/if}
-{#if Info}<Info bind:open={infoOpen} motion={app.motion} {ended} />{/if}
+{#if Info}<Info {app} bind:open={app.infoOpen} bind:tab={app.infoTab} motion={app.motion} {ended} />{/if}
 {#if ended}<OldTimetable {ended} onmore={openInfo} />{/if}
 {#if failed}
   <div class="nogl" role="alert">{tr("\r\n    Ο χάρτης δεν μπορεί να εμφανιστεί: ο browser δεν υποστηρίζει WebGL2. Δοκίμασε άλλον browser ή ενεργοποίησε την\r\n    επιτάχυνση γραφικών.\r\n  ")}</div>

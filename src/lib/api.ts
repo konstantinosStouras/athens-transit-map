@@ -42,9 +42,9 @@ export async function fetchTile(t: Tile, signal?: AbortSignal): Promise<FetchRes
 export const fetchCity = (tiles: CityTiles) => (_: string, signal: AbortSignal) =>
   loadTiles(tiles, tiles.tiles, fetchTile, signal);
 
-export async function fetchStatus(): Promise<Status | null> {
+export async function fetchStatus(signal?: AbortSignal): Promise<Status | null> {
   if (import.meta.env.VITE_MOCK === "1") return (await import("./mock")).mockStatus();
-  const r = await getJSON(`${API_BASE}/v1/status`);
+  const r = await getJSON(`${API_BASE}/v1/status`, signal);
   return r.status === 200 && r.body && typeof r.body === "object" ? (r.body as Status) : null;
 }
 

@@ -29,6 +29,7 @@
   let searching = $state(false);
   // The bar shrinks to its chips and buttons when nothing is open under it.
   const compact = $derived(collapsed && !searching);
+  let alertHelp = $state(false);
 
   // Focus returns to the button that opened a popover.
   async function refocus(p: "layers" | "help" | "trip") {
@@ -129,6 +130,23 @@
     <button type="button" aria-pressed={pop !== "trip"} onclick={() => { pop = null; collapsed = false; searching = true; void tick().then(() => document.querySelector<HTMLInputElement>(".picker input")?.focus()); }}>{tr("⌕ Βρες γραμμή")}</button>
     <button type="button" aria-pressed={pop === "trip"} aria-expanded={pop === "trip"} bind:this={tripButton} onclick={() => toggle("trip")}>{tr("↗ Σχεδίασε διαδρομή")}</button>
   </nav>
+
+  <div class="service-actions" role="group" aria-label={locale.language === "en" ? "Data and alerts" : "Δεδομένα και ειδοποιήσεις"}>
+    <button type="button" onclick={() => { app.infoTab = "stats"; app.infoOpen = true; }}>{locale.language === "en" ? "Network statistics" : "Στατιστικά δικτύου"}</button>
+    <button type="button" onclick={() => { app.infoTab = "sources"; app.infoOpen = true; }}>{locale.language === "en" ? "Data and limitations" : "Δεδομένα και περιορισμοί"}</button>
+    <button type="button" aria-expanded={alertHelp} aria-controls="alert-guide" onclick={() => alertHelp = !alertHelp}><Bell />{locale.language === "en" ? " Set up an alert" : " Ρύθμιση ειδοποίησης"}</button>
+  </div>
+  {#if alertHelp}
+    <section id="alert-guide" class="alert-guide" aria-label={locale.language === "en" ? "Notification setup" : "Οδηγίες ειδοποιήσεων"}>
+      <ol>
+        <li>{locale.language === "en" ? "Open Plan a journey. Choose a starting point (or My location) and a destination from the suggestions." : "Άνοιξε το Σχεδίασε διαδρομή. Διάλεξε αφετηρία (ή Η θέση μου) και προορισμό από τις προτάσεις."}</li>
+        <li>{locale.language === "en" ? "Once suitable bus routes appear, open Notification and choose how many stops before boarding to be notified." : "Όταν εμφανιστούν κατάλληλες γραμμές λεωφορείου, άνοιξε την Ειδοποίηση και διάλεξε πόσες στάσεις πριν την επιβίβαση θέλεις ενημέρωση."}</li>
+        <li>{locale.language === "en" ? "Choose Here for browser alerts, or In Telegram and press Start in the bot. Recurring alerts use Telegram." : "Διάλεξε Εδώ για ειδοποιήσεις browser ή Στο Telegram και πάτησε Start στο bot. Οι επαναλαμβανόμενες ειδοποιήσεις χρησιμοποιούν Telegram."}</li>
+      </ol>
+      <p>{locale.language === "en" ? "Browser alerts depend on permission and web-push support; otherwise keep this page open. The planner explains the available mode. Alerts require current route and stop data and are not exact arrival-time predictions." : "Οι ειδοποιήσεις browser εξαρτώνται από την άδεια και την υποστήριξη web push· διαφορετικά κράτησε τη σελίδα ανοιχτή. Ο σχεδιαστής εξηγεί τη διαθέσιμη λειτουργία. Απαιτούνται τρέχοντα δεδομένα γραμμών και στάσεων· δεν είναι ακριβείς προβλέψεις χρόνου άφιξης."}</p>
+      <button type="button" onclick={() => { if (pop !== "trip") toggle("trip"); alertHelp = false; }}>{locale.language === "en" ? "Open journey planner" : "Άνοιγμα σχεδιαστή διαδρομής"}</button>
+    </section>
+  {/if}
 
   {#if pop === "trip"}
       {#await import("./TripPlanner.svelte")}
@@ -368,6 +386,14 @@
 </div>
 
 <style>
+  .service-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .service-actions button, .alert-guide button { min-height: 44px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--control); color: var(--fg); cursor: pointer; font-size: 12px; }
+  .service-actions button:hover, .alert-guide button:hover { background: var(--control-hover); }
+  .service-actions button:focus-visible, .alert-guide button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .alert-guide { padding: 12px; margin-bottom: 12px; background: var(--control); border-radius: 10px; font-size: 13px; }
+  .alert-guide ol { padding-left: 20px; margin: 0; }
+  .alert-guide li + li { margin-top: 8px; }
+  .alert-guide p { color: var(--muted); font-size: 12px; }
   .panel-header { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; margin-bottom: 12px; }
   .brand { font-weight: 800; font-size: 15px; white-space: nowrap; letter-spacing: -.02em; }
   .language { display: flex; gap: 4px; }

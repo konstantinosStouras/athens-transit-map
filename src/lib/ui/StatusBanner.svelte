@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t as tr } from "../i18n.svelte";
+  import { t as tr, locale } from "../i18n.svelte";
   import { bannerMessages } from "../banner";
   import { DEMO_VIDEO_URL } from "../config";
   import { STALE_S, type AppState } from "../state.svelte";
@@ -16,6 +16,10 @@
   <div class="warn" role="status">
     {#if app.notice}<p>{tr(app.notice)}</p>{/if}
     {#each messages as m (m)}<p>{tr(m)}</p>{/each}
+    {#if offline}
+      <p>{locale.language === "en" ? "Last received vehicles may remain visible. Their GPS age shows how old they are; this does not confirm the service has recovered." : "Μπορεί να παραμένουν ορατά τα τελευταία οχήματα. Η ηλικία GPS δείχνει την παλαιότητά τους· δεν επιβεβαιώνει αποκατάσταση της υπηρεσίας."}</p>
+      <button type="button" disabled={app.statusChecking} onclick={() => void app.checkConnection()}>{app.statusChecking ? (locale.language === "en" ? "Checking…" : "Έλεγχος…") : (locale.language === "en" ? "Check connection" : "Έλεγχος σύνδεσης")}</button>
+    {/if}
     {#if offline && DEMO_VIDEO_URL}<p><a href={DEMO_VIDEO_URL} target="_blank" rel="noopener">{tr("Δες πώς δουλεύει")}</a></p>{/if}
   </div>
 {/if}
@@ -24,4 +28,5 @@
   .warn { margin-top: 10px; padding: 6px 10px; border-radius: 8px; background: var(--warn-bg); font-size: 12px; }
   p { margin: 2px 0; }
   a { color: inherit; font-weight: 600; }
+  button { min-height: 44px; margin: 6px 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--fg); cursor: pointer; }
 </style>

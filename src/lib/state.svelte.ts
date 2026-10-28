@@ -60,6 +60,8 @@ const median = (xs: number[]) => {
 };
 
 export class AppState {
+  infoOpen = $state(false);
+  infoTab = $state<"sources" | "stats">("sources");
   lines = $state.raw<LineInfo[]>([]);
   linesFailed = $state(false);
   selected = $state.raw<string[]>([]);
@@ -68,6 +70,8 @@ export class AppState {
   pollState = $state.raw<Record<string, PollState>>({});
   status = $state.raw<Status | null>(null);
   statusFailed = $state(false);
+  statusChecking = $state(false);
+  private lastStatusCheck = -Infinity;
   selection = $state.raw<Selection | null>(null);
   // Per line, the variants of the one direction to show (route card, "μόνο → …").
   focus = $state.raw<Record<string, string[]>>({});
@@ -226,6 +230,7 @@ export class AppState {
       for (const p of this.pollers.values()) p.visibilityChanged();
       this.cityPoller?.visibilityChanged();
     });
+    window.addEventListener("online", () => { void this.checkConnection(); });
   }
 
   toggleLine(id: string) {
@@ -620,9 +625,25 @@ export class AppState {
     );
   }
 
+  async checkConnection() {
+    if (Date.now() - this.lastStatusCheck < 10_000) return;
+    await this.refreshStatus();
+    // Re-arm existing pollers without bypassing their backoff or server deadlines.
+    for (const p of this.pollers.values()) p.visibilityChanged();
+    this.cityPoller?.visibilityChanged();
+  }
+
   private async refreshStatus() {
-    const s = await fetchStatus();
-    this.statusFailed = !s;
-    if (s) this.status = s;
+    if (this.statusChecking) return;
+    this.statusChecking = true;
+    this.lastStatusCheck = Date.now();
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    try {
+      const s = await fetchStatus(controller.signal);
+      this.statusFailed = !s;
+      if (s) this.status = s;
+    } catch { this.statusFailed = true; }
+    finally { clearTimeout(timeout); this.statusChecking = false; }
   }
 }
