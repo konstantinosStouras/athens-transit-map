@@ -49,7 +49,7 @@
     await tick();
     ({ layers: layersButton, help: helpButton, trip: tripButton })[p]?.focus();
   }
-  const closeTrip = () => { pop = null; void refocus("trip"); };   // its A and B stay on the map until its own ×
+  const closeTrip = () => { pop = null; void tick().then(() => document.querySelector<HTMLButtonElement>(".directions-button")?.focus()); };   // its A and B stay on the map until its own ×
   const toggle = (p: "layers" | "help" | "trip") => {
     pop = pop === p ? null : p;
     if (pop === "help") void tick().then(() => document.getElementById("pop-help")?.focus());
@@ -170,10 +170,7 @@
   <div id="mobile-panel-content" hidden={narrow.current && mobileCollapsed}>
 
   <h1 class="sr">{tr("Λεωφορεία ΟΑΣΑ")}</h1>
-  <nav class="primary" aria-label={tr("Βασικές ενέργειες")}>
-    <button type="button" aria-pressed={pop !== "trip"} onclick={() => { pop = null; collapsed = false; searching = true; void tick().then(() => document.querySelector<HTMLInputElement>(".picker input")?.focus()); }}>{tr("⌕ Βρες γραμμή")}</button>
-    <button type="button" aria-pressed={pop === "trip"} aria-expanded={pop === "trip"} bind:this={tripButton} onclick={() => toggle("trip")}>{tr("↗ Σχεδίασε διαδρομή")}</button>
-  </nav>
+
 
 
   {#if installHelp}
@@ -229,7 +226,7 @@
   <div hidden={pop === "trip"}>
   <!-- Always shown: the picked lines, the search, and the chevron. The map buttons are on the right (.rail). -->
   <div class="bar">
-    <LinePicker {app} expanded={!collapsed} searchOpen={searching} onsearch={() => (searching = true)} onclose={() => (searching = false)} {tail} />
+    <LinePicker {app} expanded={!collapsed} searchOpen={searching} onsearch={() => (searching = true)} onclose={() => (searching = false)} ondirections={() => toggle("trip")} {tail} />
   </div>
 
   {#if app.selected.length || app.cityOn}
@@ -335,14 +332,6 @@
   <StatusBanner {app} />
 
   {#snippet tail()}
-    {#if collapsed && app.selected.length}
-      <button type="button" class="tool" class:on={searching} aria-expanded={searching}
-        aria-label={tr("Αναζήτηση γραμμής")} title={tr("Αναζήτηση γραμμής")} onclick={() => (searching = !searching)}>
-        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-          <circle cx="8.5" cy="8.5" r="5.5" /><path d="M12.6 12.6L17 17" />
-        </svg>
-      </button>
-    {/if}
     <button type="button" class="fold" aria-expanded={!collapsed} aria-controls="panel-body" bind:this={foldButton}
       aria-label={tr((collapsed ? "Εμφάνιση λεπτομερειών" : "Απόκρυψη λεπτομερειών"))} onclick={fold}>
       <svg viewBox="0 0 12 8" width="14" height="10" aria-hidden="true" class={{ up: !collapsed }}>
@@ -497,9 +486,6 @@
   .shortcuts a:hover, .account-control:hover, .language button:not([aria-pressed="true"]):hover { background: var(--control-hover); color: var(--fg); }
   .shortcuts a:focus-visible, .account-control:focus-visible, .language button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   @media (max-width: 719px) { .account-control { padding: 0; } .account-control span { display: none; } .brand { font-size: 14px; } .shortcuts a { flex-direction: column; gap: 4px; min-height: 54px; } }
-  .primary { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
-  .primary button { min-height: 48px; padding: 9px 8px; line-height: 1.3; border-radius: 10px; border: 1px solid var(--border); background: var(--control); cursor: pointer; font-size: 13px; font-weight: 600; }
-  .primary button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: white; }
   .freshness { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 12px; color: var(--muted); }
   .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ontime); flex: none; }
   .freshness.stale .live-dot { background: var(--late3); }

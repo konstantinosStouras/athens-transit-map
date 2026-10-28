@@ -360,14 +360,11 @@
     }
   }
 
-  function focusIn(node: HTMLElement) {
-    if (!phone() || !ends.from.place) node.querySelector("input")?.focus();   // a phone keeps the map until a tap
-  }
 </script>
 
 <svelte:document onpointerdown={e => { if (openField && !(e.target as Element).closest?.(".ends")) openField = null; }} />
 
-<div class="trip" role="dialog" tabindex="-1" aria-labelledby="trip-h" {@attach focusIn}
+<div class="trip" role="dialog" tabindex="-1" aria-labelledby="trip-h"
   onkeydown={e => { if (e.key === "Escape" && !openField) { e.stopPropagation(); close(); } }}>
   {#if folded && from && to && trips}
     <span id="trip-h" class="sr">{tr("Διαδρομή")}</span>
@@ -390,7 +387,7 @@
     </div>
   {:else}
     <div class="row">
-      <h3 id="trip-h">{tr("Διαδρομή")}</h3>
+      <h3 id="trip-h"><span class="transit-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="16" rx="3"/><path d="M5 13h14M8 19v2m8-2v2M8 7h8"/><circle cx="8.5" cy="16" r=".7"/><circle cx="15.5" cy="16" r=".7"/></svg></span> {locale.language === "en" ? "Transit directions" : "Διαδρομή με συγκοινωνία"}</h3>
       {#if trips?.length || xfers.length}
         <button type="button" class="icon" aria-label={tr("Σύμπτυξη")} title={tr("Σύμπτυξη")} onclick={() => (folded = true)}>
           <svg viewBox="0 0 12 8" width="14" height="10" aria-hidden="true"><path d="M1 6.5l5-5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>
@@ -405,14 +402,16 @@
         <div class="field">
           <i class="dot {f}" aria-hidden="true">{tr(f === "from" ? "A" : "B")}</i>
           <input id="trip-{f}" bind:this={inputs[f]} type="search" autocomplete="off" spellcheck="false" enterkeyhint="search"
-            aria-label={tr((f === "from" ? "Από" : "Προς"))} placeholder={tr((f === "from" ? "Από: η θέση μου, στάση, μετρό, διεύθυνση" : "Προς: στάση, μετρό, διεύθυνση, μαγαζί"))}
+            aria-label={tr((f === "from" ? "Από" : "Προς"))} placeholder={locale.language === "en" ? (f === "from" ? "Choose starting point" : "Choose destination") : (f === "from" ? "Επιλογή αφετηρίας" : "Επιλογή προορισμού")}
             value={e.place?.kind === "me" ? tr(ME) : displayText(e.text, e.place?.label_en, locale.language)} class:set={!!e.place}
             role="combobox" aria-expanded={openField === f} aria-controls="trip-{f}-list" aria-autocomplete="list"
             aria-activedescendant={openField === f && opts[active] ? `trip-${f}-${active}` : undefined}
             onfocus={() => { openField = f; }} oninput={ev => edit(f, ev.currentTarget.value)} onkeydown={ev => onkeydown(f, ev)} />
         </div>
-        <!-- In the flow, not floating: a floating list is cut off by the planner's own scroll box. -->
-        {#if openField === f}
+      {/each}
+      <button type="button" class="swap" aria-label={tr("Αντιστροφή αφετηρίας και προορισμού")} title={tr("Αντιστροφή")} onclick={swap}>⇅</button>
+        {#if openField}
+            {@const f = openField}
             <ul id="trip-{f}-list" class="list" role="listbox" aria-label={tr((f === "from" ? "Αφετηρία" : "Προορισμός"))}>
               {#each opts as o, k (o.key)}
                 <!-- svelte-ignore a11y_click_events_have_key_events (keyboard goes through the combobox input) -->
@@ -430,8 +429,7 @@
               {#if geoBusy && opts.length}<li class="empty" aria-hidden="true">{tr("Αναζήτηση περιοχών…")}</li>{/if}
             </ul>
           {/if}
-      {/each}
-      <button type="button" class="swap" hidden={!!openField} aria-label={tr("Αντιστροφή αφετηρίας και προορισμού")} title={tr("Αντιστροφή")} onclick={swap}>⇅</button>
+
     </div>
     {#if locating}<p class="note">{tr("Εντοπισμός…")}</p>{/if}
 
@@ -572,7 +570,8 @@
     background: transparent; border: 0; border-radius: 0; box-shadow: none; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; }
   .sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .row { display: flex; align-items: center; gap: 4px; }
-  h3 { flex: 1; margin: 0; font-size: 14px; }
+  h3 { flex: 1; margin: 0; font-size: 15px; }
+  .transit-icon { display: inline-grid; place-items: center; width: 38px; height: 38px; margin-right: 5px; color: var(--accent); background: var(--control); border-radius: 50%; }
   .icon { display: grid; place-items: center; flex: none; width: 34px; height: 34px; border: 0; border-radius: 8px; background: none;
     color: var(--muted); font-size: 20px; cursor: pointer; }
   .icon:hover { background: var(--control); color: var(--fg); }
@@ -590,12 +589,11 @@
   .dot { flex: none; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #222; color: #fff;
     font: normal 700 11px system-ui, sans-serif; }
   /* 16px: iOS zooms into smaller inputs on focus. */
-  .field input { flex: 1; min-width: 0; height: 38px; padding: 0 10px; border: 1px solid var(--border); border-radius: 9px;
+  .field input { flex: 1; min-width: 0; height: 48px; padding: 0 10px; border: 1px solid var(--border); border-radius: 9px;
     background: var(--control); color: var(--fg); font-size: 16px; }
   .field input.set { border-color: var(--accent); }
-  .swap { position: absolute; right: 0; top: calc(50% - 20px); width: 34px; height: 40px; border: 0; border-radius: 8px; background: none;
+  .swap { position: absolute; right: 0; top: 28px; width: 34px; height: 40px; border: 0; border-radius: 8px; background: none;
     color: var(--muted); font-size: 18px; cursor: pointer; }
-  .swap[hidden] { display: none; }
   .swap:hover { background: var(--control); color: var(--fg); }
   .list { margin: 0 -38px 0 26px; max-height: min(320px, 45dvh); overflow-y: auto; padding: 4px; list-style: none;
     background: var(--control); border-radius: 10px; }

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t as tr, nameOf } from "../i18n.svelte";
+  import { t as tr, nameOf, locale } from "../i18n.svelte";
   import { tick, type Snippet } from "svelte";
   import { searchLines } from "../search";
   import { MAX_LINES } from "../selection";
@@ -9,8 +9,8 @@
   // Folded, the search field is hidden until searchOpen (the panel's magnifier, or the field below, was pressed);
   // onsearch asks the panel to open it, onclose says the search is over (a line was picked, or Escape).
   // tail: buttons of the panel, at the right of the first row (the chips, or the search with no chips).
-  let { app, expanded = true, searchOpen = false, onsearch, onclose, tail }:
-    { app: AppState; expanded?: boolean; searchOpen?: boolean; onsearch?: () => void; onclose?: () => void; tail?: Snippet } = $props();
+  let { app, expanded = true, searchOpen = false, onsearch, onclose, ondirections, tail }:
+    { app: AppState; expanded?: boolean; searchOpen?: boolean; onsearch?: () => void; onclose?: () => void; ondirections: () => void; tail?: Snippet } = $props();
 
   const QUICK = ["040", "550", "Α1", "Χ95", "2"];
 
@@ -21,7 +21,7 @@
   let list: HTMLUListElement | undefined = $state();
 
   const results = $derived(searchLines(app.lines, query));
-  const showInput = $derived(expanded || searchOpen);
+  const showInput = true;
 
   // The field is gone (the panel folded, the search ended): so is its list.
   $effect(() => { if (!showInput) open = false; });
@@ -88,6 +88,29 @@
 <svelte:document onpointerdown={e => { if (open && !(e.target as Element).closest?.(".picker")) open = false; }} />
 
 <div class="picker" class:chipped={app.selected.length > 0} class:folded={!showInput}>
+  <div class="search-row">
+  <input
+    bind:this={input}
+    bind:value={query}
+    type="search"
+    enterkeyhint="search"
+    autocomplete="off"
+    spellcheck="false"
+    placeholder={full ? tr("Έως 5 γραμμές ταυτόχρονα") : (locale.language === "en" ? "Search lines" : "Αναζήτηση γραμμής")}
+    role="combobox"
+    aria-label={tr("Αναζήτηση γραμμής")}
+    aria-expanded={open}
+    aria-controls="line-list"
+    aria-autocomplete="list"
+    aria-activedescendant={open && results[active] ? `line-opt-${active}` : undefined}
+    onfocus={() => { open = true; active = 0; }}
+    oninput={() => { open = true; active = 0; }}
+    {onkeydown}
+  />
+    <button type="button" class="search-icon" aria-label={tr("Αναζήτηση γραμμής")} onclick={() => input?.focus()}><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg></button>
+    <button type="button" class="directions-button" aria-label={locale.language === "en" ? "Plan a journey" : "Σχεδίασε διαδρομή"} title={locale.language === "en" ? "Plan a journey" : "Σχεδίασε διαδρομή"} onclick={ondirections}><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 2 22 12 12 22 2 12Z"/><path d="M8 16v-3a2 2 0 0 1 2-2h6m-3-3 3 3-3 3"/></svg></button>
+    {#if tail}<div class="tail">{@render tail()}</div>{/if}
+  </div>
   {#if app.selected.length}
     <ul class="chips" aria-label={tr("Επιλεγμένες γραμμές")}>
       {#each app.selected as id (id)}
@@ -109,34 +132,7 @@
       {/each}
     </ul>
   {/if}
-  {#if tail}<div class="tail">{@render tail()}</div>{/if}
 
-  {#if !showInput && !app.selected.length}
-    <button type="button" class="find" onclick={onsearch}>
-      <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">
-        <circle cx="8.5" cy="8.5" r="5.5" /><path d="M12.6 12.6L17 17" />
-      </svg>{tr("Γραμμή ή περιοχή\r\n    ")}</button>
-  {/if}
-  {#if showInput}
-  <input
-    bind:this={input}
-    bind:value={query}
-    type="search"
-    enterkeyhint="search"
-    autocomplete="off"
-    spellcheck="false"
-    placeholder={tr((full ? "Έως 5 γραμμές ταυτόχρονα" : "Γραμμή ή περιοχή, π.χ. 040, Πειραιάς"))}
-    role="combobox"
-    aria-label={tr("Αναζήτηση γραμμής")}
-    aria-expanded={open}
-    aria-controls="line-list"
-    aria-autocomplete="list"
-    aria-activedescendant={open && results[active] ? `line-opt-${active}` : undefined}
-    onfocus={() => { open = true; active = 0; }}
-    oninput={() => { open = true; active = 0; }}
-    {onkeydown}
-  />
-  {/if}
 
   {#if expanded && favs.length && !open}
     <!-- Starred lines: each chip shows or hides its line, so several are a tap each. -->
@@ -197,28 +193,26 @@
 </div>
 
 <style>
-  .picker { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 4px; align-items: start; }
-  .chips { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
-  .folded .chips { margin-bottom: 0; }   /* nothing under them */
-  /* The panel's buttons: beside the chips, or, with no chips, beside the search. */
-  .tail { grid-column: 2; grid-row: 1; display: flex; align-items: center; gap: 2px; margin: -4px -6px 0 0; }
-  .picker:not(.chipped) input, .find { grid-column: 1; grid-row: 1; }
-  .find { display: inline-flex; align-items: center; justify-self: stretch; gap: 6px; min-height: 44px; padding: 0 12px;
-    border: 0; border-radius: 18px; background: var(--control); color: var(--muted); font-size: 13px; cursor: pointer; }
-  .find:hover { background: var(--control-hover); }
+  .picker { position: relative; display: flex; flex-direction: column; }
+  .search-row { display: flex; align-items: center; min-width: 0; background: var(--control); border: 1px solid var(--border); border-radius: 12px; }
+  .search-row input { flex: 1; min-width: 0; width: 0; height: 48px; padding: 8px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--fg); font-size: 16px; }
+  .search-row input:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .search-icon, .directions-button { display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 8px; }
+  .directions-button { color: var(--accent); border-left: 1px solid var(--border); border-radius: 0; }
+  .search-icon:hover, .directions-button:hover { background: var(--control-hover); }
+  .search-icon:focus-visible, .directions-button:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+  .tail { display: flex; align-items: center; flex: none; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
   .quick, .tip { grid-column: 1 / -1; }
   .chip { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 10px; border: 0;
     border-radius: 16px; background: var(--c); color: var(--t); font-weight: 700; cursor: pointer; }
   .chip .x { opacity: .8; font-weight: 400; margin-left: 2px; }
   .chip .st { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%;
     background: rgba(0, 0, 0, .3); font-size: 12px; }
-  input { grid-column: 1 / -1; grid-row: 2; width: 100%; min-height: 40px; padding: 8px 12px; border-radius: 10px; border: 1px solid transparent;
-    background: var(--control); font-size: 16px; /* 16px stops iOS zooming on focus */ }
-  input:focus { outline: 2px solid var(--accent); outline-offset: 0; }
   .quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; color: var(--muted); font-size: 12px; }
   .q { min-height: 40px; padding: 0 10px; border: 0; border-radius: 16px; background: var(--c, #3b5bdb); color: #fff;
     font-weight: 700; cursor: pointer; }
-  .list { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 10; margin: 0; padding: 4px;
+  .list { position: relative; z-index: 1; margin: 4px 0 0; padding: 4px;
     list-style: none; max-height: min(360px, 55vh); overflow-y: auto; overscroll-behavior: contain;
     background: var(--bg); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
   .list li { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 8px; border-radius: 8px; cursor: pointer; }

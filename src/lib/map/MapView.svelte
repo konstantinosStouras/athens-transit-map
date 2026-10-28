@@ -20,6 +20,7 @@
   import SpeedLegend from "../ui/SpeedLegend.svelte";
   import { lightenDark } from "./basemap";
   import { Fleet, routeGeom, type FleetEntry, type RouteGeom } from "./fleet";
+  import { needsRecenter } from "./follow";
   import { bounds, routesFC, stopsFC, variantFC, type DrawnLine } from "./layers";
 
   setWorkerUrl(workerUrl);
@@ -320,7 +321,7 @@
   let locState = $state<LocState>("off");
   let follow = $state(false);
   let flyOnFix = false;
-  let me: { marker: Marker; el: HTMLElement; mover: Mover; fix: Fix } | null = null;
+  let me: { marker: Marker; el: HTMLElement; mover: Mover; fix: Fix; rendered: LngLat } | null = null;
   const locator = new Locator({
     geo: navigator.geolocation,
     onState: s => {
@@ -347,7 +348,7 @@
       wrap.className = "me-wrap";
       wrap.append(el);
       const marker = new Marker({ element: wrap, anchor: "center", subpixelPositioning: true }).setLngLat(f.pos).addTo(m);
-      me = { marker, el, mover: new Mover(f.pos), fix: f };
+      me = { marker, el, mover: new Mover(f.pos), fix: f, rendered: [f.pos[0], f.pos[1]] };
       me.mover.setPlan(plan, plan.target(now), now);
     } else {
       const h = planOnto(me.mover.pos, plan, now);
@@ -463,9 +464,16 @@
     if (me) {
       me.mover.reduced = reduced;
       const r = me.mover.step(Date.now() / 1000);
-      me.marker.setLngLat(r.pos);
+      if (r.pos[0] !== me.rendered[0] || r.pos[1] !== me.rendered[1]) {
+        me.marker.setLngLat(r.pos);
+        me.rendered = [r.pos[0], r.pos[1]];
+      }
       if (me.mover.fixing) fixing = true;
-      if (follow && !m.isMoving()) m.setCenter(r.pos, { follow: true });   // not during the fly-to or a gesture
+      if (follow && !m.isMoving()) {
+        const target = m.project(r.pos), center = m.project(m.getCenter());
+        // Avoid a new map render when the GPS position is stationary or shifts by less than half a pixel.
+        if (needsRecenter(target, center)) m.setCenter(r.pos, { follow: true });
+      }
     }
     // Corrections and trails: 30 fps close up; zoomed out, where they are a few pixels and every frame
     // steps the whole city, 4 fps.
