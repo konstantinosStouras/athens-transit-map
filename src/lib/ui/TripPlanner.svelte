@@ -5,7 +5,7 @@
 
   // Kept across close and reopen.
   interface End { text: string; place: Place | null }
-  const memo = { from: { text: "", place: null } as End, to: { text: "", place: null } as End, radius: 500, n: 3, applied: "" };
+  const memo = { from: { text: "", place: null } as End, to: { text: "", place: null } as End, n: 3, applied: "" };
 </script>
 
 <script lang="ts">
@@ -24,13 +24,12 @@
 
   type Field = "from" | "to";
   const FIELDS = ["from", "to"] as const;
-  const RADII = [300, 500, 800];
+  const radius = 500; // Boarding and alighting stops within 500 m in a straight line.
   const ME = "Η θέση μου";
   const ALERT_S = 2 * 3600;
   const phone = () => matchMedia("(max-width: 719px)").matches;
 
   let ends = $state.raw<Record<Field, End>>({ from: memo.from, to: memo.to });
-  let radius = $state(memo.radius);
   let n = $state(memo.n);
   let data = $state.raw<{ ix: TripIndex; places: Place[]; known: Set<string>; stale: string | null } | null>(null);
   let failed = $state(false);
@@ -49,7 +48,7 @@
   const locGen = { from: 0, to: 0 };   // the same for each field's location request
   let closed = false;
 
-  $effect(() => { memo.from = ends.from; memo.to = ends.to; memo.radius = radius; memo.n = n; });
+  $effect(() => { memo.from = ends.from; memo.to = ends.to; memo.n = n; });
   $effect(() => () => { ctl?.abort(); clearTimeout(timer); gen++; locGen.from++; locGen.to++; closed = true; });
 
   async function load() {
@@ -157,7 +156,8 @@
 
   // Both ends set: the lines, applied to the map at once (a new trip replaces the picks).
   const from = $derived(ends.from.place), to = $derived(ends.to.place);
-  const tooClose = $derived(!!from && !!to && Math.min(...from.pts.flatMap(a => to.pts.map(b => distM(a, b)))) < radius);
+  const endDistance = $derived(from && to ? Math.min(...from.pts.flatMap(a => to.pts.map(b => distM(a, b)))) : null);
+  const tooClose = $derived(endDistance != null && endDistance < radius);
   const trips = $derived(data && from && to && !tooClose ? findTrips(data.ix, from.pts, to.pts, radius, data.known) : null);
   // With one change: when no line goes without, or a change saves 10 minutes.
   const xfers = $derived.by((): TripTransfer[] => {
@@ -434,15 +434,15 @@
     {#if locating}<p class="note">{tr("Εντοπισμός…")}</p>{/if}
 
     {#if err}<p class="warn" role="status">{tr(err)}</p>{/if}
-    {#if byMetro}<p class="metro">{tr("🚇 Με ")}{tr(byMetro.line)}: {tr(byMetro.from)} → {tr(byMetro.to)}{#if byMetro.walk >= 50}{tr(" · περπάτημα ")}{tr(metres(byMetro.walk))}{/if}{tr(". Συνήθως πιο γρήγορα από το λεωφορείο.")}</p>{/if}
+    {#if byMetro}<p class="metro">{tr("🚇 Με ")}{tr(byMetro.line)}: {tr(byMetro.from)} → {tr(byMetro.to)} · 🚶 {tr(metres(byMetro.walk))} {locale.language === "en" ? "(straight-line estimate)" : "(εκτίμηση σε ευθεία)"}</p>{/if}
     {#if failed}
       <p class="warn">{tr("Δεν φόρτωσαν οι στάσεις. ")}<button type="button" class="link" onclick={load}>{tr("Ξανά")}</button></p>
     {:else if !data}
       <p class="note">{tr("Φόρτωση στάσεων…")}</p>
     {:else if tooClose}
-      <p class="note">{#if anyEnd && walkTo}{tr("Ο σταθμός ")}{nameOf(walkTo)}{tr(" είναι ")}{tr(metres(walkTo.d))}{tr(": καλύτερα με τα πόδια.")}{:else}{tr("Είναι πολύ κοντά: καλύτερα με τα πόδια.")}{/if}</p>
+      <p class="note">{#if anyEnd && walkTo}{tr("Ο σταθμός ")}{nameOf(walkTo)}{tr(" είναι ")}{tr(metres(walkTo.d))}{locale.language === "en" ? " away in a straight line." : " σε ευθεία."}{:else}{locale.language === "en" ? "Close enough to walk: " : "Κοντινή απόσταση για περπάτημα: "}{tr(metres(endDistance ?? 0))}{locale.language === "en" ? " in a straight line." : " σε ευθεία."}{/if}</p>
     {:else if trips && !trips.length && !xfers.length}
-      <p class="note">{tr("Καμία γραμμή δεν πάει, ούτε με μία αλλαγή. Δοκίμασε περισσότερο περπάτημα ή κοντινή περιοχή.")}</p>
+      <p class="note">{locale.language === "en" ? "No route found with stops within 500 m of each end. Try a nearby starting point or destination." : "Δεν βρέθηκε διαδρομή με στάσεις έως 500 μ. σε ευθεία από κάθε σημείο. Δοκίμασε κοντινή αφετηρία ή προορισμό."}</p>
     {:else if trips}
       {#if !trips.length}<p class="note">{tr("Καμία γραμμή λεωφορείου δεν πάει χωρίς αλλαγή.")}</p>{/if}
       <ol class="results" bind:this={resultsEl}>
@@ -455,7 +455,8 @@
               onclick={() => toggleTripLine(app, t)}>{tr(t.line)}</button>
             <button type="button" class="pick" aria-pressed={picked === t.line} title={tr("Μόνο αυτή στον χάρτη, με τις στάσεις της")} onclick={() => solo(t)}>
               <span><b>{tr(mins(t.min))}</b> {tr(stop(v.from))} → {tr(offAt(v.to))}</span>
-              <small>{#if going(t)}{tr("προς ")}{tr(going(t))} · {/if}{tr(t.stops)} {tr(t.stops === 1 ? "στάση" : "στάσεις")}{tr(" · περπάτημα ")}{tr(metres(t.walk))}{#if k >= MAX_LINES}{tr(" · εκτός χάρτη (έως ")}{tr(MAX_LINES)}){/if}</small>
+              <small>{#if going(t)}{tr("προς ")}{tr(going(t))} · {/if}{tr(t.stops)} {tr(t.stops === 1 ? "στάση" : "στάσεις")}{#if k >= MAX_LINES}{tr(" · εκτός χάρτη (έως ")}{tr(MAX_LINES)}){/if}</small>
+              <small class="walking">🚶 {locale.language === "en" ? "Walking" : "Περπάτημα"}: {tr(metres(t.walk))} {locale.language === "en" ? "(straight-line estimate)" : "(εκτίμηση σε ευθεία)"}</small>
             </button>
             <a class="maps" href={mapsTo(v.from)} target="_blank" rel="noopener" title={tr("Με τα πόδια ως τη στάση " + (stop(v.from)) + ", στο Google Maps")}
               aria-label={tr("Με τα πόδια ως τη στάση " + (stop(v.from)) + ", στο Google Maps")}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -475,7 +476,8 @@
               </span>
               <button type="button" class="pick" aria-pressed={picked === xkey(x)} title={tr("Αυτές οι δύο στον χάρτη, με τις στάσεις")} onclick={() => pickXfer(x)}>
                 <span><b>{tr(mins(x.min))}</b> {tr(stop(a.from))} → {tr(stop(a.to))}{tr(", αλλαγή: ")}{tr(stop(b.from))} → {tr(offAt(b.to))}</span>
-                <small>{tr(a.stops + b.stops)}{tr(" στάσεις · περπάτημα ")}{tr(metres(x.walk))}{#if x.xfer >= 50}{tr(" και ")}{tr(metres(x.xfer))}{tr(" στην αλλαγή")}{/if}{tr(" · με ~5′ αναμονή")}</small>
+                <small>{tr(a.stops + b.stops)}{tr(" στάσεις · με ~5′ αναμονή")}</small>
+                <small class="walking">🚶 {locale.language === "en" ? "Walking" : "Περπάτημα"}: {tr(metres(x.walk + x.xfer))} {locale.language === "en" ? "(straight-line estimate, including transfer)" : "(εκτίμηση σε ευθεία, μαζί με την αλλαγή)"}</small>
               </button>
               <a class="maps" href={mapsTo(a.from)} target="_blank" rel="noopener" title={tr("Με τα πόδια ως τη στάση " + (stop(a.from)) + ", στο Google Maps")}
                 aria-label={tr("Με τα πόδια ως τη στάση " + (stop(a.from)) + ", στο Google Maps")}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -556,8 +558,6 @@
     {/if}
 
     <div class="foot">
-      <label>{tr("Περπάτημα έως\r\n        ")}<select bind:value={radius}>{#each RADII as r (r)}<option value={r}>{tr(r)}{tr(" μ.")}</option>{/each}</select>
-      </label>
       {#if trips?.length || xfers.length}<small>{tr("Χρόνοι κατά προσέγγιση, χωρίς την αναμονή στη στάση.")}</small>{/if}
       {#if data?.stale}<small>{tr("Στάσεις από ")}{tr(data.stale)}{tr("· μπορεί να έχουν αλλάξει.")}</small>{/if}
       {#if geo?.places.length}<small>{tr("Περιοχές: © OpenStreetMap")}</small>{/if}
@@ -643,7 +643,7 @@
   select { min-height: 34px; padding: 0 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--control);
     color: var(--fg); font-size: 16px; }
   .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px; color: var(--muted); font-size: 12px; }
-  .foot label { display: flex; align-items: center; gap: 6px; }
+  .walking { display: block; margin-top: 2px; }
   .note { display: block; margin: 8px 0 0; color: var(--muted); font-size: 12px; }
   .warn { margin: 8px 0 0; color: var(--late2); }
   .link { border: 0; background: none; color: var(--accent); text-decoration: underline; cursor: pointer; font-size: inherit; }
