@@ -4,6 +4,7 @@ import { API_BASE, STATIC_BASE } from "./config";
 import type { FetchResult } from "./poller";
 import { loadTiles, tileKey, tileOf, tileUrlPath, type CityTiles, type Tile } from "./tiles";
 import type { CityLive, LineStatic, LinesIndex, Status } from "./types";
+import { validLineStatic, validStatus } from "./static-validation";
 
 // No cache-busting: all users should share the Cloudflare / browser cache.
 export async function getJSON(url: string, signal?: AbortSignal): Promise<FetchResult> {
@@ -45,7 +46,7 @@ export const fetchCity = (tiles: CityTiles) => (_: string, signal: AbortSignal) 
 export async function fetchStatus(signal?: AbortSignal): Promise<Status | null> {
   if (import.meta.env.VITE_MOCK === "1") return (await import("./mock")).mockStatus();
   const r = await getJSON(`${API_BASE}/v1/status`, signal);
-  return r.status === 200 && r.body && typeof r.body === "object" ? (r.body as Status) : null;
+  return r.status === 200 && validStatus(r.body) ? r.body : null;
 }
 
 // Static files change only with a new GTFS: fetch each once per page load.
@@ -84,5 +85,8 @@ export const fetchLines = () =>
   });
 
 export const fetchLineStatic = (line: string) =>
-  once("line:" + line, async (): Promise<LineStatic> =>
-    import.meta.env.VITE_MOCK === "1" ? (await import("./mock")).mockLineStatic(line) : staticJSON(lineStaticUrl(line)));
+  once("line:" + line, async (): Promise<LineStatic> => {
+    const result: unknown = import.meta.env.VITE_MOCK === "1" ? (await import("./mock")).mockLineStatic(line) : await staticJSON(lineStaticUrl(line));
+    if (!validLineStatic(result, line)) throw new Error("Invalid route and stop data");
+    return result;
+  });

@@ -23,6 +23,7 @@
   import { Fleet, routeGeom, type FleetEntry, type RouteGeom } from "./fleet";
   import { needsRecenter } from "./follow";
   import { trafficTileTemplate } from "../traffic";
+  import { walkingFC, walkingLabel, walkingDistance } from "../walking";
   import { bounds, routesFC, stopsFC, variantFC, type DrawnLine } from "./layers";
 
   setWorkerUrl(workerUrl);
@@ -116,6 +117,15 @@
   function fitTo(ids: string[]) {
     const b = bounds(drawn.filter(d => ids.includes(d.id)));
     if (b && map) map.fitBounds(b, { padding: padding(), maxZoom: 15, duration: 600 });
+  }
+
+  function fitPoints(points: [number, number][]) {
+    if (!map || !points.length) return;
+    const b = new LngLatBounds();
+    for (const [lat, lon] of points) b.extend([lon, lat]);
+    const frame = padding();
+    const walkPadding = innerWidth < 720 && typeof frame !== "number" ? { ...frame, left: 88, right: 64 } : frame;
+    map.fitBounds(b, { padding: walkPadding, maxZoom: 17, duration: 600 });
   }
 
   function fitMetro(ids: string[]) {
@@ -289,6 +299,9 @@
     m.addSource("routes", { type: "geojson", data: EMPTY });
     m.addSource("highlight", { type: "geojson", data: EMPTY });
     m.addSource("stops", { type: "geojson", data: EMPTY });
+    m.addSource("walking", { type: "geojson", data: EMPTY });
+    m.addLayer({ id: "walking-halo", type: "line", source: "walking", paint: { "line-color": "#ffffff", "line-width": 6, "line-opacity": 0.8 } });
+    m.addLayer({ id: "walking-line", type: "line", source: "walking", paint: { "line-color": "#1763cc", "line-width": 3, "line-dasharray": [2, 2] } });
     m.addLayer({ id: "routes", type: "line", source: "routes",
       layout: { "line-join": "round", "line-cap": "round" },
       paint: { "line-color": ["get", "color"], "line-width": 4, "line-opacity": 0.6, "line-offset": LANE_PX } }, under);
@@ -688,10 +701,12 @@
 
     map = m;
     app.fit = fitTo;
+    app.fitPoints = fitPoints;
     app.fitMetro = fitMetro;
     if (import.meta.env.DEV) Object.assign(window, { __map: m, __fleet: fleet, __doms: doms });
     return () => {
       app.fit = () => {};
+      app.fitPoints = () => {};
       app.fitMetro = () => {};
       disposed = true;
       cancelAnimationFrame(raf);
@@ -822,6 +837,21 @@
   });
 
   // The picked trip's stops: get on, change, get off.
+  $effect(() => {
+    if (!loaded || !map) return;
+    const legs = app.walking, language = locale.language;
+    (map.getSource("walking") as GeoJSONSource).setData(walkingFC(legs));
+    const markers = legs.filter(leg => walkingDistance(leg) >= 5).map(leg => {
+      const el = document.createElement("div");
+      el.className = "walking-label";
+      el.textContent = walkingLabel(leg, language);
+      el.title = leg.name;
+      return new Marker({ element: el, anchor: "bottom", offset: [0, -8] })
+        .setLngLat([(leg.from[1] + leg.to[1]) / 2, (leg.from[0] + leg.to[0]) / 2]).addTo(map!);
+    });
+    return () => markers.forEach(marker => marker.remove());
+  });
+
   $effect(() => {
     const stops = app.tripStops, m = map;
     if (!stops.length || !m) return;

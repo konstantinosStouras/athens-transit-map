@@ -6,6 +6,23 @@ import type { Status } from "../src/lib/types";
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe("connection recovery checks", () => {
+  it("recovers missing route geometry with paced, deduplicated retries", async () => {
+    vi.useFakeTimers();
+    const shape = { id: "040", stops: {}, variants: {} };
+    const fetcher = vi.spyOn(api, "fetchLineStatic").mockRejectedValueOnce(new Error("offline")).mockResolvedValue(shape);
+    const app = new AppState();
+    await app.retryStatic("040");
+    expect(app.staticFailed["040"]).toBe(true);
+    await app.retryStatic("040");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await Promise.all([app.retryStatic("040"), app.retryStatic("040")]);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(app.staticFailed["040"]).toBe(false);
+    expect(app.statics["040"]).toEqual(shape);
+    await app.retryStatic("040");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
   it("recovers a failed line index without removing a selected line", async () => {
     const lines = vi.spyOn(api, "fetchLines").mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({
       gtfs_version: "v1", lines: [{ id: "040", name: "Line 040", name_en: "Line 040", color: "#123456", text_color: "#ffffff", kind: "bus" }],

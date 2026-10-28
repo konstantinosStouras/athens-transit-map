@@ -10,11 +10,13 @@
   import { locale, t } from "./lib/i18n.svelte";
   import { applyTheme } from "./lib/theme";
   import { InstallState } from "./lib/install.svelte";
+  import { withLanguage } from "../public/language-url.js";
 
   $effect(() => {
     document.documentElement.lang = locale.language;
     try { localStorage.setItem("oasa-language", locale.language); } catch { /* private browsing */ }
     document.title = t("Λεωφορεία ΟΑΣΑ") + " · Live";
+    history.replaceState(history.state, "", withLanguage(location.href, locale.language));
   });
   const app = new AppState();
   const account = new Account(app);

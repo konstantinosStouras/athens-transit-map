@@ -30,11 +30,11 @@ describe("verified account lifecycle",()=>{
   mock.reload.mockImplementation(async()=>{Object.assign(user,{emailVerified:true})});
   await account.checkVerification();expect(account.verified).toBe(true);expect(account.allowed).toBe(true);expect(mock.snapshot).toBeDefined();
  });
- it("restores saved empty favourites instead of uploading the previous device list",async()=>{
+ it("restores saved favourites while keeping the URL language",async()=>{
   const {account,app}=setup(true);await vi.waitFor(()=>expect(mock.snapshot).toBeDefined());
   mock.snapshot!(snapshot({language:"en",favorites:[]}));
-  expect(app.favorites).toEqual([]);expect(mock.locale.language).toBe("en");
-  account.sync("en",[]);expect(mock.write).not.toHaveBeenCalled();
+  expect(app.favorites).toEqual([]);expect(mock.locale.language).toBe("el");
+  account.sync("el",[]);expect(mock.write).not.toHaveBeenCalled();
  });
  it("flushes a pending change on sign-out without saving the cleared local favourites",async()=>{
   const {account,app}=setup(true);await vi.waitFor(()=>expect(mock.snapshot).toBeDefined());

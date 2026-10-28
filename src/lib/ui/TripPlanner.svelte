@@ -17,9 +17,10 @@
   import type { AppState } from "../state.svelte";
   import Bell from "./Bell.svelte";
   import VehicleType from "./VehicleType.svelte";
+  import { closestPoint, walkingLabel, type WalkingLeg } from "../walking";
   import { walkUrl } from "../maps";
   import { alertTargets, anyMetro, boardings, centre, distM, findTransfers, findTrips, geocode, legTrip, loadTripIndex, metroDirect, metroPlaces, nearestStation, places, searchPlaces,
-    suggest, termini, toggleTripLine, type Pt, type TripIndex, type TripLine, type TripTransfer } from "../trip";
+    suggest, termini, type Pt, type TripIndex, type TripLine, type TripTransfer } from "../trip";
 
   let { app, onclose }: { app: AppState; onclose: () => void } = $props();
 
@@ -176,7 +177,7 @@
   };
   const anyEnd = $derived(to?.kind === "metro-any");
   // Google Maps, on foot to the first stop: from where the phone is, or from the chosen start.
-  const mapsTo = (k: number) => walkUrl(ptOf(k), from && from.kind !== "me" ? centre(from.pts) : undefined);
+  const mapsTo = (k: number) => walkUrl(ptOf(k), from && from.kind !== "me" ? closestPoint(from.pts, ptOf(k)) : undefined);
   const walkTo = $derived(anyEnd && from ? stationAt(centre(from.pts)) : null);
   // Both ends near one metro or tram line: said before the buses.
   const byMetro = $derived(app.metro && from && to && !anyEnd && !tooClose ? metroDirect(app.metro, from.pts, to.pts, radius) : null);
@@ -190,33 +191,51 @@
     const k = x ? x.legs[1].to : t?.variants[0].to ?? xfers[0]?.legs[1].to;
     return k == null || !data ? null : stationAt(ptOf(k))?.pt ?? null;
   });
-  $effect(() => { app.tripEnds = from && toPt ? { from: centre(from.pts), to: toPt } : null; });
+  $effect(() => { app.tripEnds = from && toPt ? { from: app.walking.find(w => w.kind === "board")?.from ?? centre(from.pts), to: app.walking.find(w => w.kind === "finish")?.to ?? toPt } : null; });
 
   // The result shown alone (a line, or "l1>l2" for a change), with its stops on the map.
   let picked = $state<string | null>(null);
   const stopAt = (k: number) => ({ at: ptOf(k), name: stop(k) });
   const xkey = (x: TripTransfer) => `${x.legs[0].line}>${x.legs[1].line}`;
+  function setWalking(board: number, off: number, transfer?: [number, number]) {
+    if (!from || !toPt) return;
+    const legs: WalkingLeg[] = [{ from: closestPoint(from.pts, ptOf(board)), to: ptOf(board), name: stop(board), kind: "board" }];
+    if (transfer && distM(ptOf(transfer[0]), ptOf(transfer[1])) > 5)
+      legs.push({ from: ptOf(transfer[0]), to: ptOf(transfer[1]), name: stop(transfer[1]), kind: "transfer" });
+    legs.push({ from: ptOf(off), to: to && !anyEnd ? closestPoint(to.pts, ptOf(off)) : toPt, name: ends.to.text, kind: "finish" });
+    app.walking = legs;
+  }
+  function focusWalk() {
+    const leg = app.walking.find(w => w.kind === "board");
+    if (!leg) return;
+    if (phone()) folded = true;
+    void tick().then(() => app.fitPoints([leg.from, leg.to]));
+  }
   function solo(t: TripLine) {
     const v = t.variants[0];
     app.showTrip([{ id: t.line, variants: t.variants.map(x => x.id) }], true);
     app.tripStops = [stopAt(v.from), stopAt(v.to)];
     picked = t.line;
+    setWalking(v.from, v.to);
   }
   function pickXfer(x: TripTransfer) {   // another trip than the alert's: the alert ends
     const [a, b] = x.legs;
     app.showTrip([{ id: a.line, variants: [a.id] }, { id: b.line, variants: [b.id] }]);
     app.tripStops = [stopAt(a.from), stopAt(a.to), ...(stop(b.from) === stop(a.to) ? [] : [stopAt(b.from)]), stopAt(b.to)];
     picked = xkey(x);
+    setWalking(a.from, b.to, [a.to, b.from]);
   }
+  // Editing either endpoint clears the old walking overlay immediately.
+  $effect(() => { if (!from || !to) untrack(() => { app.walking = []; app.tripStops = []; picked = null; }); });
   // A picked result whose lines were closed meanwhile is no longer shown alone.
   $effect(() => {
     if (!picked) return;
     const lines = picked.split(">");
-    if (lines.some(l => !app.selected.includes(l))) untrack(() => { picked = null; app.tripStops = []; });
+    if (lines.some(l => !app.selected.includes(l))) untrack(() => { picked = null; app.tripStops = []; app.walking = []; });
   });
   function showAll() {
     if (trips?.length) app.showTrip(trips.map(t => ({ id: t.line, variants: t.variants.map(v => v.id) })), true);
-    app.tripStops = [];
+    app.tripStops = []; app.walking = [];
     picked = null;
   }
 
@@ -229,7 +248,7 @@
     memo.applied = key;
     untrack(() => {
       picked = null;
-      app.tripStops = [];
+      app.tripStops = []; app.walking = [];
       if (trips.length) app.showTrip(trips.map(t => ({ id: t.line, variants: t.variants.map(v => v.id) })));
       else if (xfers.length) pickXfer(xfers[0]);
     });
@@ -242,7 +261,7 @@
   function close() {
     stopSearch();
     app.tripEnds = null;
-    app.tripStops = [];
+    app.tripStops = []; app.walking = [];
     onclose();
   }
 
@@ -445,6 +464,8 @@
     {:else if trips && !trips.length && !xfers.length}
       <p class="note">{locale.language === "en" ? "No route found with stops within 500 m of each end. Try a nearby starting point or destination." : "Δεν βρέθηκε διαδρομή με στάσεις έως 500 μ. σε ευθεία από κάθε σημείο. Δοκίμασε κοντινή αφετηρία ή προορισμό."}</p>
     {:else if trips}
+      <p class="note">{locale.language === "en" ? "Choose a journey below to show its lines and stops. Dashed blue links show walking distances in a straight line, not a street route." : "Διάλεξε διαδρομή παρακάτω για γραμμές και στάσεις. Οι μπλε διακεκομμένες συνδέσεις δείχνουν αποστάσεις πεζή σε ευθεία, όχι πορεία στους δρόμους."}</p>
+      {#if picked && app.walking[0]}<div class="walk-summary" role="status"><strong>{locale.language === "en" ? "Shown on map: " : "Στον χάρτη: "}{picked.replace(">", " → ")}</strong><span>{walkingLabel(app.walking[0], locale.language)} → {app.walking[0].name}</span><button type="button" onclick={focusWalk}>{locale.language === "en" ? "Show walk to stop" : "Δείξε τη μετάβαση στη στάση"}</button><a href={walkUrl(app.walking[0].to, app.walking[0].from)} target="_blank" rel="noopener noreferrer">{locale.language === "en" ? "Walking directions in Google Maps ↗" : "Οδηγίες πεζή στο Google Maps ↗"}</a></div>{/if}
       {#if !trips.length}<p class="note">{tr("Καμία γραμμή λεωφορείου δεν πάει χωρίς αλλαγή.")}</p>{/if}
       <ol class="results" bind:this={resultsEl}>
         {#each trips as t, k (t.line)}
@@ -452,9 +473,10 @@
           {@const v = t.variants[0]}
           <li class:out={k >= MAX_LINES} class:picked={picked === t.line}>
             <button type="button" class="chip" style:--c={tr(app.lineColor(t.line).bg)} style:--t={tr(app.lineColor(t.line).fg)}
-              aria-pressed={app.selected.includes(t.line)} title={tr((nameOf(info)))}
-              onclick={() => toggleTripLine(app, t)}>{tr(t.line)}</button>
+              aria-pressed={picked === t.line} title={tr((nameOf(info)))}
+              onclick={() => solo(t)}>{tr(t.line)}</button>
             <button type="button" class="pick" aria-pressed={picked === t.line} title={tr("Μόνο αυτή στον χάρτη, με τις στάσεις της")} onclick={() => solo(t)}>
+              <small class="selection-label">{picked === t.line ? (locale.language === "en" ? "✓ Shown on map" : "✓ Στον χάρτη") : (locale.language === "en" ? "Show this journey" : "Δείξε αυτή τη διαδρομή")}</small>
               <span><b>{tr(mins(t.min))}</b> {tr(stop(v.from))} → {tr(offAt(v.to))}</span>
               <VehicleType kind={info?.kind} />
               <small>{#if going(t)}{tr("προς ")}{tr(going(t))} · {/if}{tr(t.stops)} {tr(t.stops === 1 ? "στάση" : "στάσεις")}{#if k >= MAX_LINES}{tr(" · εκτός χάρτη (έως ")}{tr(MAX_LINES)}){/if}</small>
@@ -472,11 +494,12 @@
           {#each xfers as x (xkey(x))}
             {@const [a, b] = x.legs}
             <li class:picked={picked === xkey(x)}>
-              <span class="pair">
+              <button type="button" class="pair" aria-label={(locale.language === "en" ? "Show journey " : "Δείξε τη διαδρομή ") + a.line + " → " + b.line} aria-pressed={picked === xkey(x)} onclick={() => pickXfer(x)}>
                 <b class="chip on" style:--c={tr(app.lineColor(a.line).bg)} style:--t={tr(app.lineColor(a.line).fg)}>{tr(a.line)}</b>
                 <b class="chip on" style:--c={tr(app.lineColor(b.line).bg)} style:--t={tr(app.lineColor(b.line).fg)}>{tr(b.line)}</b>
-              </span>
+              </button>
               <button type="button" class="pick" aria-pressed={picked === xkey(x)} title={tr("Αυτές οι δύο στον χάρτη, με τις στάσεις")} onclick={() => pickXfer(x)}>
+                <small class="selection-label">{picked === xkey(x) ? (locale.language === "en" ? "✓ Shown on map" : "✓ Στον χάρτη") : (locale.language === "en" ? "Show this journey" : "Δείξε αυτή τη διαδρομή")}</small>
                 <span><b>{tr(mins(x.min))}</b> {tr(stop(a.from))} → {tr(stop(a.to))}{tr(", αλλαγή: ")}{tr(stop(b.from))} → {tr(offAt(b.to))}</span>
                 <span><VehicleType kind={app.lineInfo.get(a.line)?.kind} /> → <VehicleType kind={app.lineInfo.get(b.line)?.kind} /></span>
                 <small>{tr(a.stops + b.stops)}{tr(" στάσεις · με ~5′ αναμονή")}</small>
@@ -613,12 +636,17 @@
     background: none; color: var(--fg); font-weight: 700; cursor: pointer; }
   .chip[aria-pressed="true"], .chip.on { background: var(--c); color: var(--t); }
   .chip.on { display: inline-grid; place-items: center; min-width: 0; cursor: default; }
-  .pair { flex: none; display: flex; flex-direction: column; gap: 2px; }
+  .pair { border: 0; padding: 0; background: none; color: inherit; cursor: pointer; flex: none; display: flex; flex-direction: column; gap: 2px; }
   .pick { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 2px 6px; margin: -2px 0;
     border: 0; border-radius: 8px; background: none; color: var(--fg); font-size: 13px; text-align: left; cursor: pointer; }
   .pick:hover, .picked .pick { background: var(--control); }
+  .picked .pick { box-shadow: inset 3px 0 var(--accent); padding-left: 10px; }
+  .results .selection-label { color: var(--accent); font-weight: 700; }
+  .walk-summary { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--accent); border-radius: 10px; font-size: 12px; }
+  .walk-summary button { min-height: 44px; background: var(--accent); color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
+  .walk-summary a { color: var(--accent); }
   .pick b { font-variant-numeric: tabular-nums; }
-  .maps { flex: none; display: grid; place-items: center; width: 34px; height: 34px; margin: -3px -4px 0 0; border-radius: 8px; color: var(--muted); }
+  .maps { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: 0; border-radius: 8px; color: var(--muted); }
   .maps:hover { background: var(--control); color: var(--fg); }
   .maps svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
   .metro { margin: 8px 0 0; padding: 6px 8px; border-radius: 8px; background: var(--control); font-size: 13px; }

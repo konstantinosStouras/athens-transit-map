@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t as tr, locale, setLanguage, nameOf } from "../i18n.svelte";
+  import { languageQuery } from "../../../public/language-url.js";
   import { tick } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
   import { directionGroups, focusGroup, otherDirection } from "../directions";
@@ -41,6 +42,7 @@
   let installHelp = $state(false);
   let menuOpen = $state(false);
   let menuButton: HTMLButtonElement | undefined = $state();
+  $effect(() => { if (menuOpen) void tick().then(() => document.querySelector<HTMLButtonElement>(".menu-heading button")?.focus()); });
   let stopsOpen = $state(false);
   const trafficTiles = import.meta.env.VITE_TRAFFIC_CREDIT?.trim() ? trafficTileTemplate(import.meta.env.VITE_TRAFFIC_TILES) : null;
   function showRail(mode: "tram" | "metro") {
@@ -75,6 +77,9 @@
   }
   // A press anywhere outside the panel folds it: the map matters more. The trip planner stays open while the map is used.
   function dismiss(e: PointerEvent) {
+    const target = e.target as Element | null;
+    if (target?.closest?.(".menu-drawer, .menu-toggle")) return;
+    if (menuOpen) menuOpen = false;
     if (pop === "trip" || (e.target as Element | null)?.closest?.(".panel, .rail, .popwrap")) return;
     searching = false;
     collapsed = true;
@@ -166,9 +171,10 @@
   </div>
   <p class="menu-label">{locale.language === "en" ? "News and feedback" : "Νέα και σχόλια"}</p>
   <nav class="shortcuts" aria-label={locale.language === "en" ? "About and feedback" : "Νέα και σχόλια"}>
-    <a href={`${import.meta.env.BASE_URL}updates.html?lang=${locale.language}`} title={tr("Τι νέο υπάρχει ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></svg><span>{locale.language === "en" ? "What’s new" : "Νέα"}</span></a>
-    <a href={`${import.meta.env.BASE_URL}submit-feedback.html?lang=${locale.language}`} title={tr("Στείλε σχόλιο με εικόνα ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5a9.5 9.5 0 1 1 19 0Z"/><path d="M7 9h9M7 13h6"/></svg><span>{locale.language === "en" ? "Feedback" : "Σχόλιο"}</span></a>
-    <a href={`${import.meta.env.BASE_URL}feedback.html?lang=${locale.language}`} title={tr("Σχόλια μέχρι σήμερα ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M16 4a3 3 0 0 1 0 6M19 21v-3a7 7 0 0 0-2-5"/></svg><span>{locale.language === "en" ? "Community" : "Κοινότητα"}</span></a>
+    <a href={`${import.meta.env.BASE_URL}updates.html${languageQuery(locale.language)}`} title={tr("Τι νέο υπάρχει ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></svg><span>{locale.language === "en" ? "What’s new" : "Νέα"}</span></a>
+    <a href={`${import.meta.env.BASE_URL}submit-feedback.html${languageQuery(locale.language)}`} title={tr("Στείλε σχόλιο με εικόνα ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5a9.5 9.5 0 1 1 19 0Z"/><path d="M7 9h9M7 13h6"/></svg><span>{locale.language === "en" ? "Feedback" : "Σχόλιο"}</span></a>
+    <a href={`${import.meta.env.BASE_URL}feedback.html${languageQuery(locale.language)}`} title={tr("Σχόλια μέχρι σήμερα ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M16 4a3 3 0 0 1 0 6M19 21v-3a7 7 0 0 0-2-5"/></svg><span>{locale.language === "en" ? "Community" : "Κοινότητα"}</span></a>
+    <a href={`${import.meta.env.BASE_URL}contact.html${languageQuery(locale.language)}`}>{locale.language === "en" ? "Contact and developers" : "Επικοινωνία και προγραμματιστές"}</a>
   </nav>
 </aside>
 {/if}
@@ -202,6 +208,10 @@
       {/if}
       <p><strong>{locale.language === "en" ? "iPhone / iPad" : "iPhone / iPad"}</strong><br>{locale.language === "en" ? "In Safari, tap Share, then Add to Home Screen. Turn on Open as Web App if offered, and tap Add." : "Στο Safari πάτησε Κοινοποίηση και μετά Προσθήκη στην οθόνη Αφετηρίας. Αν εμφανιστεί, ενεργοποίησε το Άνοιγμα ως εφαρμογή Ιστού και πάτησε Προσθήκη."}</p>
       <p><strong>Android</strong><br>{locale.language === "en" ? "In Chrome, open the menu (⋮), choose Install app or Add to Home screen, and follow the prompts." : "Στο Chrome άνοιξε το μενού (⋮), επίλεξε Εγκατάσταση εφαρμογής ή Προσθήκη στην αρχική οθόνη και ακολούθησε τις οδηγίες."}</p>
+      <details><summary>{locale.language === "en" ? "Original project’s Android preview" : "Δοκιμαστική εφαρμογή Android του αρχικού έργου"}</summary>
+        <p>{locale.language === "en" ? "The original project publishes an Android APK preview on GitHub (v0.1.7, checked 28 October). This is a separate edition and may differ from this website. We have not tested the APK on a device or verified a Google Play listing." : "Το αρχικό έργο δημοσιεύει δοκιμαστικό APK Android στο GitHub (v0.1.7, έλεγχος 28 Οκτωβρίου). Είναι ξεχωριστή έκδοση και μπορεί να διαφέρει από αυτόν τον ιστότοπο. Δεν δοκιμάσαμε το APK σε συσκευή ούτε επαληθεύσαμε καταχώριση στο Google Play."}</p>
+        <a href="https://github.com/angelospk/athens-transit-app/releases/tag/v0.1.7" target="_blank" rel="noopener noreferrer">{locale.language === "en" ? "View the original Android preview release ↗" : "Δες τη δοκιμαστική έκδοση Android ↗"}</a>
+      </details>
       <p>{locale.language === "en" ? "Sign in to sync your language and favorite lines. Browser alerts depend on device support and permission; on iPhone, open the installed app before setting up alerts. An internet connection is needed for live data." : "Συνδέσου για συγχρονισμό γλώσσας και αγαπημένων γραμμών. Οι ειδοποιήσεις browser εξαρτώνται από τη συσκευή και την άδεια· στο iPhone άνοιξε πρώτα την εγκατεστημένη εφαρμογή. Τα ζωντανά δεδομένα χρειάζονται σύνδεση στο διαδίκτυο."}</p>
       <button type="button" onclick={() => { installHelp = false; alertHelp = true; }}>{locale.language === "en" ? "Set up an alert" : "Ρύθμιση ειδοποίησης"}</button>
     </section>
@@ -341,14 +351,6 @@
     {/if}
   </div>
 
-  {#each app.hits as h (h.id)}
-    <div class="hit" role="alert">
-      <span>🚌 {tr(h.text)}</span>
-      <button type="button" aria-label={tr("Κλείσιμο")} onclick={() => app.dismissHit(h.id)}>×</button>
-    </div>
-  {/each}
-  <StatusBanner {app} />
-
   {#snippet tail()}
     <button type="button" class="fold" aria-expanded={!collapsed} aria-controls="panel-body" bind:this={foldButton}
       aria-label={tr((collapsed ? "Εμφάνιση λεπτομερειών" : "Απόκρυψη λεπτομερειών"))} onclick={fold}>
@@ -358,6 +360,14 @@
     </button>
   {/snippet}
   </div>
+  {#each app.hits as h (h.id)}
+    <div class="hit" role="alert">
+      <span>🚌 {tr(h.text)}</span>
+      <button type="button" aria-label={tr("Κλείσιμο")} onclick={() => app.dismissHit(h.id)}>×</button>
+    </div>
+  {/each}
+  <StatusBanner {app} />
+
   </div>
 </section>
 

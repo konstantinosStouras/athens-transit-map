@@ -14,6 +14,7 @@ import { hitText, type AlertHit, type AlertSpec } from "./alerts";
 import { assignSlots, colorOf, type LineColor } from "./lineColors";
 import { retryStops, stopPush } from "./push";
 import type { CityLive, CityVehicle, LineInfo, LineLive, LineStatic, Status, Vehicle } from "./types";
+import type { WalkingLeg } from "./walking";
 
 export const STALE_S = 120;
 // A picked line whose feed has no vehicles for this many updates in a row is taken off the map.
@@ -69,6 +70,9 @@ export class AppState {
   selected = $state.raw<string[]>([]);
   live = $state.raw<Record<string, LineLive>>({});
   statics = $state.raw<Record<string, LineStatic>>({});
+  staticFailed = $state.raw<Record<string, boolean>>({});
+  private staticLoading = new Set<string>();
+  private staticRetryAt = new Map<string, number>();
   pollState = $state.raw<Record<string, PollState>>({});
   status = $state.raw<Status | null>(null);
   statusFailed = $state(false);
@@ -123,6 +127,8 @@ export class AppState {
   tripEnds = $state.raw<{ from: [number, number]; to: [number, number] } | null>(null);
   // The stops of the trip picked in the planner: where to get on, change and get off ([lat, lon]).
   tripStops = $state.raw<{ at: [number, number]; name: string }[]>([]);
+  walking = $state.raw<WalkingLeg[]>([]);
+  fitPoints: (points: [number, number][]) => void = () => {};
 
   // Set by MapView: frame the given lines once their shapes are loaded.
   fit: (ids: string[]) => void = () => {};
@@ -228,7 +234,12 @@ export class AppState {
     if (this.cityOn) this.startCity();
     this.loadMetro();
     setInterval(() => (this.now = Date.now()), 1000);
-    setInterval(() => { if (!document.hidden) void this.refreshStatus(); }, STATUS_EVERY_MS);
+    setInterval(() => {
+      if (!document.hidden) {
+        void this.refreshStatus();
+        for (const id of this.detailLines) void this.retryStatic(id);
+      }
+    }, STATUS_EVERY_MS);
     document.addEventListener("visibilitychange", () => {
       this.now = Date.now();
       for (const p of this.pollers.values()) p.visibilityChanged();
@@ -572,10 +583,25 @@ export class AppState {
     }
     if (!this.live[id]) this.pollState = { ...this.pollState, [id]: "loading" };
     p.start();
-    fetchLineStatic(id).then(s => (this.statics = { ...this.statics, [id]: s }), () => {});
+    void this.retryStatic(id);
+  }
+
+  async retryStatic(id: string) {
+    if (this.statics[id] || this.staticLoading.has(id) || Date.now() < (this.staticRetryAt.get(id) ?? 0)) return;
+    this.staticLoading.add(id);
+    try {
+      const s = await fetchLineStatic(id);
+      this.statics = { ...this.statics, [id]: s };
+      this.staticFailed = { ...this.staticFailed, [id]: false };
+      this.staticRetryAt.delete(id);
+    } catch {
+      this.staticFailed = { ...this.staticFailed, [id]: true };
+      this.staticRetryAt.set(id, Date.now() + 30_000);
+    } finally { this.staticLoading.delete(id); }
   }
 
   private onData(id: string, d: LineLive) {
+    if (this.detailLines.includes(id)) void this.retryStatic(id);
     this.live = { ...this.live, [id]: d };
     const s = this.selection;
     if (s?.kind === "vehicle" && s.line === id && !d.vehicles.some(v => v.id === s.id)) this.clearSelection();
@@ -632,6 +658,7 @@ export class AppState {
 
   async checkConnection() {
     if (this.linesFailed) void this.retryLines();
+    for (const id of this.detailLines) void this.retryStatic(id);
     if (Date.now() - this.lastStatusCheck < 10_000) return;
     await this.refreshStatus();
     // Re-arm existing pollers without bypassing their backoff or server deadlines.

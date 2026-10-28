@@ -2,7 +2,7 @@ import { deleteUser, reauthenticateWithPopup, reauthenticateWithCredential, Emai
 import type { Unsubscribe } from "firebase/firestore";
 import { firebaseApp } from "./firebase";
 import { guestSession, preferences, authMessage, type Preference } from "./account-policy";
-import { locale, setLanguage } from "./i18n.svelte";
+import { locale } from "./i18n.svelte";
 import type { AppState } from "./state.svelte";
 export class Account {
  user = $state.raw<User|null>(null);
@@ -40,7 +40,8 @@ export class Account {
    if(remote){
     // Preserve edits made while a save is queued; they will be written next.
     if(this.prefReady&&this.last&&JSON.stringify(this.current())!==JSON.stringify(this.last))return;
-    this.last=remote;setLanguage(remote.language);this.app.favorites=remote.favorites;
+    // A shared URL always wins over a saved language, including the clean Greek URL.
+    this.last={...remote,language:locale.language};this.app.favorites=remote.favorites;
     try{localStorage.setItem("favorites",JSON.stringify(remote.favorites))}catch{}
     this.prefReady=true;this.syncStatus="saved";
    }else if(!snapshot.exists()){

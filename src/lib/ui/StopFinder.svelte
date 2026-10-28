@@ -8,6 +8,8 @@
   import type { AppState } from "../state.svelte";
   import VehicleType from "./VehicleType.svelte";
   import OfficialArrivalsLink from "./OfficialArrivalsLink.svelte";
+  import { walkingLabel } from "../walking";
+  import { walkUrl } from "../maps";
   import { arrivalsFor, parseArrivals, type ArrivalFeed } from "../arrivals";
   let { app, seed = null, onclose }: { app: AppState; seed?: { name: string; lat: number; lon: number } | null; onclose: () => void } = $props();
   const en = $derived(locale.language === "en");
@@ -18,6 +20,15 @@
   let origin = $state.raw<Pt | null>(null);
   let accuracy = $state(0), query = $state(untrack(() => seed?.name ?? "")), radius = $state(500), limit = $state(8);
   let selected = $state<StopPoint | null>(null);
+  let ownedStops: AppState["tripStops"] | null = null;
+  function clearNearby() {
+    if (app.walking[0]?.kind === "nearby") app.walking = [];
+    if (app.tripStops === ownedStops) app.tripStops = [];
+    ownedStops = null;
+  }
+  $effect(() => { if (!selected) untrack(() => {
+    clearNearby();
+  }); });
   const arrivalsUrl = import.meta.env.VITE_ARRIVALS_URL?.trim();
   let arrivalFeed = $state.raw<ArrivalFeed | null>(null);
   let arrivalUnavailable = $state(false);
@@ -49,7 +60,10 @@
   });
   let gone = false;
   let locationRequest = 0;
-  $effect(() => () => { gone = true; locationRequest++; });
+  $effect(() => () => {
+    gone = true; locationRequest++;
+    clearNearby();
+  });
   async function load() {
     loading = true; failed = false;
     try {
@@ -75,7 +89,11 @@
   });
   async function chooseStop(stop: StopPoint) {
     selected = stop;
+    app.tripStops = [{ at: [stop.lat, stop.lon], name: nameOf(stop) }];
+    ownedStops = app.tripStops;
+    app.walking = origin ? [{ from: origin, to: [stop.lat, stop.lon], name: nameOf(stop), kind: "nearby" }] : [];
     await tick();
+    app.fitPoints(origin ? [origin, [stop.lat, stop.lon]] : [[stop.lat, stop.lon]]);
     document.getElementById("selected-stop-title")?.focus();
   }
   function locate() {
@@ -87,7 +105,9 @@
     navigator.geolocation.getCurrentPosition(p => {
       if (gone || request !== locationRequest) return;
       origin = [p.coords.latitude, p.coords.longitude]; accuracy = p.coords.accuracy;
-      selected = null; limit = 8; locating = false;
+      selected = null; query = ""; limit = 8; locating = false;
+      const nearest = findStops(points.filter(s => s.services.some(service => service.boarding)), "", origin, radius, 1)[0];
+      if (nearest) void chooseStop(nearest.stop);
     }, error => {
       if (gone || request !== locationRequest) return;
       locationError = error.code === 1 ? "denied" : "unavailable"; locating = false;
@@ -130,6 +150,11 @@
     {#if selected}
       <section class="selected" aria-labelledby="selected-stop-title">
         <h3 id="selected-stop-title" tabindex="-1">{nameOf(selected)}</h3>
+        {#if origin && app.walking[0]?.kind === "nearby"}
+          <p>{walkingLabel(app.walking[0], locale.language)}</p>
+          <p class="note">{en ? "The dashed map connection is a straight-line estimate. Streets and crossings can make the walk longer." : "Η διακεκομμένη σύνδεση είναι εκτίμηση σε ευθεία. Δρόμοι και διαβάσεις μπορεί να αυξάνουν τη διαδρομή."}</p>
+          <a href={walkUrl([selected.lat, selected.lon], origin)} target="_blank" rel="noopener noreferrer">{en ? "Walking directions in Google Maps ↗" : "Οδηγίες πεζή στο Google Maps ↗"}</a>
+        {/if}
         <OfficialArrivalsLink stop={selected} {version} />
         <p class="note">{en ? "Same-name stops can be on opposite sides of the road. Check the direction below." : "Στάσεις με ίδιο όνομα μπορεί να είναι απέναντι. Έλεγξε την κατεύθυνση παρακάτω."}</p>
         <p class="note">{en ? "Follow a direction to load its vehicles. Counts use fresh GPS and the reported next stop; they are not arrival times. No countdown does not mean no service." : "Ακολούθησε μια κατεύθυνση για να φορτωθούν τα οχήματά της. Τα πλήθη βασίζονται σε πρόσφατο GPS και τη δηλωμένη επόμενη στάση, όχι σε χρόνο άφιξης. Η απουσία ένδειξης δεν σημαίνει ότι δεν υπάρχει δρομολόγιο."}</p>

@@ -30,7 +30,7 @@ export function splitKnown(ids: string[], known: Set<string>) {
 export function serializeSelection(lines: string[], language?: string | null): string {
   // Keep commas readable and retain the explicitly selected UI language in shared links.
   const query = lines.length ? "l=" + lines.map(encodeURIComponent).join(",") : "";
-  const lang = language === "el" || language === "en" ? `lang=${language}` : "";
+  const lang = language === "en" ? "lang=en" : "";
   const parts = [query, lang].filter(Boolean);
   return parts.length ? "?" + parts.join("&") : "";
 }

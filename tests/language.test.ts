@@ -5,7 +5,7 @@ import { translate } from "../src/lib/translate";
 describe("UI languages", () => {
   it("keeps the language when adding, removing, or sharing lines", () => {
     expect(serializeSelection(["040", "550"], "en")).toBe("?l=040,550&lang=en");
-    expect(serializeSelection([], "el")).toBe("?lang=el");
+    expect(serializeSelection([], "el")).toBe("");
     expect(serializeSelection(["040"], "unexpected")).toBe("?l=040");
   });
   it("keeps Greek text and non-string values unchanged", () => {

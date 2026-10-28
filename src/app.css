@@ -84,6 +84,7 @@ button, input { font: inherit; color: inherit; }
 
 /* Trip planner: start (A) and end (B). The pin turns inside the marker: MapLibre positions the
    marker with `transform`, which a `rotate` on the same element would turn too. */
+.walking-label { padding: 4px 8px; border: 2px solid #1763cc; border-radius: 10px; background: #fff; color: #12365e; font: 600 12px/1.4 system-ui, sans-serif; box-shadow: 0 1px 5px #0004; pointer-events: none; }
 .trip-end { padding-bottom: 4px; pointer-events: none; }
 .trip-end i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50% 50% 50% 0; rotate: -45deg;
   background: #222; color: #fff; font: normal 700 13px system-ui, sans-serif; border: 2px solid #fff;
