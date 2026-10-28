@@ -71,7 +71,8 @@
 
     {#if ended}
       <div class="old">
-        <b>{tr("Το πρόγραμμα του ΟΑΣΑ έληξε στις ")}{tr(dayMonth(ended))}.</b>{tr(" Ο ΟΑΣΑ δεν έχει δημοσιεύσει ακόμα νέο πρόγραμμα\r\n        δρομολογίων (GTFS), οπότε ο χάρτης χρησιμοποιεί το τελευταίο. Οι θέσεις των οχημάτων είναι ζωντανές· οι\r\n        καθυστερήσεις και τα δρομολόγια βγαίνουν από το παλιό πρόγραμμα, άρα είναι κατά προσέγγιση. Μόλις βγει νέο,\r\n        ο χάρτης το παίρνει αυτόματα. ")}<a href={GTFS_PAGE} target="_blank" rel="noopener">{tr("Το αρχείο στο data.gov.gr")}</a>
+        <b>{locale.language === "en" ? "The timetable used by the data source expired on " : "Το πρόγραμμα που χρησιμοποιεί η πηγή δεδομένων έληξε στις "}{tr(dayMonth(ended))}.</b>
+        {locale.language === "en" ? " Live GPS positions update separately, but route and schedule information may be out of date. Check the official source for a newer timetable; this warning does not establish whether one has been published or loaded." : " Οι ζωντανές θέσεις GPS ενημερώνονται ξεχωριστά, αλλά οι γραμμές και τα ωράρια μπορεί να είναι παλιά. Έλεγξε την επίσημη πηγή για νεότερο πρόγραμμα· αυτή η προειδοποίηση δεν επιβεβαιώνει αν έχει δημοσιευτεί ή φορτωθεί."} <a href={GTFS_PAGE} target="_blank" rel="noopener">{tr("Το αρχείο στο data.gov.gr")}</a>
       </div>
     {/if}
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t as tr } from "../i18n.svelte";
+  import { t as tr, locale } from "../i18n.svelte";
   import { dayMonth } from "../format";
   import { GTFS_PAGE } from "../sources";
 
@@ -19,7 +19,7 @@
 </button>
 {#if open}
   <div class="more" id="old-note" role="region" aria-label={tr("Παλιό πρόγραμμα ΟΑΣΑ")}>
-    <p><b>{tr("Το πρόγραμμα του ΟΑΣΑ έληξε στις ")}{tr(dayMonth(ended))}.</b>{tr(" Οι θέσεις των οχημάτων είναι ζωντανές· οι καθυστερήσεις\r\n      και τα δρομολόγια βγαίνουν από το παλιό πρόγραμμα, άρα είναι κατά προσέγγιση. Μόλις βγει νέο, ο χάρτης το παίρνει μόνος του.")}</p>
+    <p><b>{locale.language === "en" ? "The timetable used by the data source expired on " : "Το πρόγραμμα που χρησιμοποιεί η πηγή δεδομένων έληξε στις "}{tr(dayMonth(ended))}.</b>{locale.language === "en" ? " GPS positions update separately; routes and schedule comparisons may be out of date. Check the official source for a newer timetable." : " Οι θέσεις GPS ενημερώνονται ξεχωριστά· οι γραμμές και οι συγκρίσεις ωραρίου μπορεί να είναι παλιές. Έλεγξε την επίσημη πηγή για νεότερο πρόγραμμα."}</p>
     <p class="links">
       <a href={GTFS_PAGE} target="_blank" rel="noopener">{tr("Το αρχείο στο data.gov.gr")}</a>
       <button type="button" onclick={() => { open = false; onmore(); }}>{tr("Περισσότερα")}</button>
