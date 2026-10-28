@@ -61,14 +61,27 @@ function once<T>(key: string, load: () => Promise<T>): Promise<T> {
 }
 
 async function staticJSON<T>(url: string): Promise<T> {
-  const r = await getJSON(url);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  const aborted = new Promise<FetchResult>(resolve => controller.signal.addEventListener("abort", () => resolve({ status: 0, body: null }), { once: true }));
+  const r = await Promise.race([getJSON(url, controller.signal), aborted]).finally(() => clearTimeout(timeout));
   if (r.status !== 200 || !r.body) throw new Error(`HTTP ${r.status}: ${url}`);
   return r.body as T;
 }
 
+export function validLinesIndex(value: unknown): value is LinesIndex {
+  if (!value || typeof value !== "object") return false;
+  const ix = value as Partial<LinesIndex>;
+  return typeof ix.gtfs_version === "string" && !!ix.gtfs_version.trim() && Array.isArray(ix.lines) && ix.lines.length > 0 &&
+    ix.lines.every(line => !!line && typeof line.id === "string" && !!line.id.trim() && typeof line.name === "string");
+}
+
 export const fetchLines = () =>
-  once("lines", async (): Promise<LinesIndex> =>
-    import.meta.env.VITE_MOCK === "1" ? (await import("./mock")).mockLines() : staticJSON(`${STATIC_BASE}/lines.json`));
+  once("lines", async (): Promise<LinesIndex> => {
+    const result: unknown = import.meta.env.VITE_MOCK === "1" ? (await import("./mock")).mockLines() : await staticJSON(`${STATIC_BASE}/lines.json`);
+    if (!validLinesIndex(result)) throw new Error("Invalid line index");
+    return result;
+  });
 
 export const fetchLineStatic = (line: string) =>
   once("line:" + line, async (): Promise<LineStatic> =>

@@ -65,6 +65,7 @@ export class AppState {
   infoTab = $state<"sources" | "stats">("sources");
   lines = $state.raw<LineInfo[]>([]);
   linesFailed = $state(false);
+  linesLoading = $state(false);
   selected = $state.raw<string[]>([]);
   live = $state.raw<Record<string, LineLive>>({});
   statics = $state.raw<Record<string, LineStatic>>({});
@@ -221,7 +222,7 @@ export class AppState {
     this.writeUrl();
     for (const id of this.selected) this.startLine(id);
     void Promise.allSettled(this.selected.map(fetchLineStatic)).then(() => this.fit(this.selected));
-    this.loadLines();
+    void this.retryLines();
     void this.refreshStatus();
     if (this.cityOn) this.startCity();
     this.loadMetro();
@@ -613,21 +614,23 @@ export class AppState {
     }
   }
 
-  private loadLines() {
-    fetchLines().then(
-      ix => {
-        this.lines = ix.lines;
-        this.linesFailed = false;
-        // Drop ids from an old or hand-edited link that are not lines.
-        const { dropped } = splitKnown(this.selected, new Set(this.lineInfo.keys()));
-        for (const id of dropped) this.toggleLine(id);
-        if (dropped.length) this.say(`Άγνωστη γραμμή: ${dropped.join(", ")}. Αφαιρέθηκε από την επιλογή.`);
-      },
-      () => (this.linesFailed = true),
-    );
+  async retryLines() {
+    if (this.linesLoading) return;
+    this.linesLoading = true;
+    try {
+      const ix = await fetchLines();
+      this.lines = ix.lines;
+      this.linesFailed = false;
+      // Drop ids from an old or hand-edited link that are not lines.
+      const { dropped } = splitKnown(this.selected, new Set(this.lineInfo.keys()));
+      for (const id of dropped) this.toggleLine(id);
+      if (dropped.length) this.say(`Άγνωστη γραμμή: ${dropped.join(", ")}. Αφαιρέθηκε από την επιλογή.`);
+    } catch { this.linesFailed = true; }
+    finally { this.linesLoading = false; }
   }
 
   async checkConnection() {
+    if (this.linesFailed) void this.retryLines();
     if (Date.now() - this.lastStatusCheck < 10_000) return;
     await this.refreshStatus();
     // Re-arm existing pollers without bypassing their backoff or server deadlines.

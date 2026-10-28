@@ -194,6 +194,11 @@
         </li>
       {/each}
     </ul>
+    {#if app.linesFailed}
+      <button type="button" class="retry-lines" disabled={app.linesLoading} onclick={() => void app.retryLines()}>
+        {app.linesLoading ? (locale.language === "en" ? "Retrying…" : "Νέα προσπάθεια…") : (locale.language === "en" ? "Retry loading lines" : "Επανάληψη φόρτωσης γραμμών")}
+      </button>
+    {/if}
   {/if}
 </div>
 
@@ -224,6 +229,7 @@
   .list li.active { background: var(--control-hover); }
   .list li.disabled { opacity: .45; cursor: not-allowed; }
   .list li.empty { color: var(--muted); cursor: default; }
+  .retry-lines { align-self: flex-start; min-height: 44px; margin-top: 6px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--control); color: var(--fg); cursor: pointer; }
   .id { flex: none; min-width: 44px; padding: 2px 6px; border-radius: 6px; background: var(--c); color: var(--t);
     font-weight: 700; text-align: center; font-size: 13px; }
   .name { flex: 1; min-width: 0; font-size: 13px; line-height: 1.3; overflow-wrap: anywhere; }

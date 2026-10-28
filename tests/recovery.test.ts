@@ -6,6 +6,35 @@ import type { Status } from "../src/lib/types";
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe("connection recovery checks", () => {
+  it("recovers a failed line index without removing a selected line", async () => {
+    const lines = vi.spyOn(api, "fetchLines").mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({
+      gtfs_version: "v1", lines: [{ id: "040", name: "Line 040", name_en: "Line 040", color: "#123456", text_color: "#ffffff", kind: "bus" }],
+    });
+    const app = new AppState();
+    app.selected = ["040"];
+    await app.retryLines();
+    expect(app.linesFailed).toBe(true);
+    expect(app.selected).toEqual(["040"]);
+    await app.retryLines();
+    expect(lines).toHaveBeenCalledTimes(2);
+    expect(app.linesFailed).toBe(false);
+    expect(app.lineInfo.has("040")).toBe(true);
+    expect(app.selected).toEqual(["040"]);
+  });
+
+  it("retries the line list on a connection check and deduplicates in-flight requests", async () => {
+    let finish!: (value: Awaited<ReturnType<typeof api.fetchLines>>) => void;
+    const lines = vi.spyOn(api, "fetchLines").mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    vi.spyOn(api, "fetchStatus").mockResolvedValue(null);
+    const app = new AppState();
+    app.linesFailed = true;
+    const check = app.checkConnection();
+    await app.retryLines();
+    expect(lines).toHaveBeenCalledTimes(1);
+    finish({ gtfs_version: "v1", lines: [{ id: "1", name: "Line 1", name_en: "Line 1", color: "#123456", text_color: "#fff", kind: "trolley" }] });
+    await check;
+    expect(app.linesFailed).toBe(false);
+  });
   it("times out a stalled status check and allows another check", async () => {
     vi.useFakeTimers();
     const fetchStatus = vi.spyOn(api, "fetchStatus").mockImplementation(signal => new Promise(resolve => {

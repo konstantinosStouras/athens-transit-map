@@ -33,6 +33,7 @@
   // dragged up it opens. The same by a tap, or Enter on the grab button.
   const narrow = new MediaQuery("(max-width: 719px)");
   let sheet = $state<SheetState>("open");
+  let compact = $state(true);
   let drag = $state(0);   // px the finger has moved it from its place
   let dragging = $state(false);
   let grab: { id: number; y: number; from: SheetState; range: number; moved: boolean } | null = null;
@@ -55,7 +56,7 @@
   $effect(() => {
     void selKey;
     // A finger still down on the old sheet must not move, or settle, the new one.
-    untrack(() => { sheet = "open"; drag = 0; dragging = false; grab = null; });
+    untrack(() => { sheet = "open"; compact = true; drag = 0; dragging = false; grab = null; });
   });
 
   function down(e: PointerEvent) {
@@ -155,7 +156,24 @@
       </header>
     </div>
 
-    <div class="body" id="card-body" inert={narrow.current && sheet === "peek"}>
+    {#if !narrow.current && compact}
+      <div class="compact-summary">
+        {#if vehicle}
+          <span>{tr("Επόμενη στάση")}</span>
+          <strong>{tr(nameOf(vehicle.nextStop) || "Δεν είναι διαθέσιμη")}</strong>
+          <small>{tr("Θέση GPS · ")}{tr(ago(vehicle.v.position_at, app.serverNow))}</small>
+        {:else if route}
+          <span>{tr("Κατεύθυνση")}</span>
+          <strong>{tr(route.from)} → {tr(route.to)}</strong>
+        {/if}
+      </div>
+    {/if}
+    {#if !narrow.current}
+      <button type="button" class="details-toggle" aria-expanded={!compact} aria-controls="card-body"
+        onclick={() => compact = !compact}>{tr(compact ? "Ανάπτυξη λεπτομερειών" : "Σύμπτυξη λεπτομερειών")}</button>
+    {/if}
+
+    <div class="body" id="card-body" hidden={!narrow.current && compact} inert={(!narrow.current && compact) || (narrow.current && sheet === "peek")}>
 
       {#if vehicle}
         {@const v = vehicle.v}
@@ -210,6 +228,11 @@
   .card { position: absolute; z-index: 6; right: 66px; bottom: 28px; width: 380px; padding: 12px 14px;
     background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
     }
+  .compact-summary { display: grid; gap: 3px; padding: 4px 0; overflow-wrap: anywhere; }
+  .compact-summary span, .compact-summary small { color: var(--muted); font-size: 12px; }
+  .compact-summary strong { font-size: 15px; }
+  .details-toggle { min-height: 36px; padding: 4px 0; border: 0; background: transparent; color: var(--accent); cursor: pointer; font-weight: 600; }
+  .details-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .top { touch-action: none; }
   .grab { display: none; width: 100%; height: 14px; margin: -8px 0 2px; padding: 0; border: 0; background: none; cursor: grab; }
   .grab span { display: block; width: 40px; height: 5px; margin: 0 auto; border-radius: 3px; background: var(--border); }
