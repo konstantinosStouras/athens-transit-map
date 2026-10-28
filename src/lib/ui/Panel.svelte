@@ -12,6 +12,7 @@
   import MetroToggles from "./MetroToggles.svelte";
   import StatusBanner from "./StatusBanner.svelte";
   import VehicleType from "./VehicleType.svelte";
+  import { trafficTileTemplate } from "../traffic";
 
   let { app, install, onaccount, signedIn }: { app: AppState; install: InstallState; onaccount: () => void; signedIn: boolean } = $props();
 
@@ -41,6 +42,7 @@
   let menuOpen = $state(false);
   let menuButton: HTMLButtonElement | undefined = $state();
   let stopsOpen = $state(false);
+  const trafficTiles = import.meta.env.VITE_TRAFFIC_CREDIT?.trim() ? trafficTileTemplate(import.meta.env.VITE_TRAFFIC_TILES) : null;
   $effect(() => {
     if (app.stopRequest) { stopsOpen = true; mobileCollapsed = false; pop = null; alertHelp = false; }
   });
@@ -413,6 +415,14 @@
             <span>{tr("Τυπική ταχύτητα ανά δρόμο")}<br /><small>{tr("Από στάση σε στάση, από τις θέσεις GPS. Πάτα ένα κομμάτι για km/h.")}</small></span>
           </label>
         </section>
+        {#if trafficTiles}
+          <section>
+            <h4>{locale.language === "en" ? "Road traffic" : "Κίνηση δρόμων"}</h4>
+            <label class="switch"><input type="checkbox" checked={app.trafficOn} onchange={e => app.trafficOn = e.currentTarget.checked} />
+              <span>{locale.language === "en" ? "Show traffic overlay" : "Εμφάνιση κίνησης"}<br /><small>{locale.language === "en" ? "Traffic data from the configured provider; availability and freshness depend on that source." : "Δεδομένα κίνησης από τη ρυθμισμένη πηγή· η διαθεσιμότητα και η ανανέωση εξαρτώνται από αυτή."}{#if import.meta.env.VITE_TRAFFIC_CREDIT} · {import.meta.env.VITE_TRAFFIC_CREDIT}{/if}</small></span>
+            </label>
+          </section>
+        {/if}
         <section>
           <h4>{tr("Μετρό, ΗΣΑΠ και τραμ")}</h4>
           <label class="switch">

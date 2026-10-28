@@ -131,6 +131,8 @@ bun run build      # static site in dist/
 | `VITE_API_BASE` | `https://transit.haroldpoi.dev` | Live API (`/v1/lines/{id}`, `/v1/status`) |
 | `VITE_STATIC_BASE` | `https://angelospk.github.io/athens-transit-rt/static/v1` | Static data (`lines.json`, `lines/{id}.json`) |
 | `VITE_GEOCODE_URL` | `https://photon.komoot.io/api/` | Area and street search of the trip planner (Photon API) |
+| `VITE_ARRIVALS_URL` | unset | Optional real-time predictions; see [arrival feed contract](docs/arrival-feed.md). |
+| `VITE_TRAFFIC_TILES`, `VITE_TRAFFIC_CREDIT` | unset | Optional authorized traffic raster tiles and required attribution; see [traffic feed](docs/traffic-feed.md). |
 | `VITE_DEMO_VIDEO_URL` | `DEMO_VIDEO_URL` in `src/lib/config.ts` (this README) | Video linked from the "no connection" banner; empty: no link |
 | `VITE_MOCK` | unset | `1` = answer every request from `src/fixtures/` (moving vehicles, 30 s cycle) |
 

@@ -88,6 +88,7 @@ export class AppState {
   motion = $state(stored("motion", true, isBool));
   // Typical bus speed per road segment (public/speed/segments.geojson, lab/segspeed).
   speedOn = $state(stored("speedOn", false, isBool));
+  trafficOn = $state(false);
   // Metro, ISAP and tram stations on the map (the pinned lines' tracks stay either way).
   stationsOn = $state(stored("stationsOn", false, isBool));
   // Map filters; the selected vehicle is always shown.

@@ -1,0 +1,7 @@
+# Optional road-traffic overlay
+
+No road-traffic feed is configured by default. The existing bus-speed layer is not a road-traffic feed. An authorized provider of transparent XYZ raster tiles can be connected at build time with `VITE_TRAFFIC_TILES`, an HTTPS template containing `{z}`, `{x}` and `{y}`. Set the required `VITE_TRAFFIC_CREDIT` to the provider attribution; the layer is unavailable without it. For GitHub Pages, these are repository Actions variables; deploy again after setting them. Values become public in the website, so they must not contain private credentials.
+
+When a valid template is configured, the map settings include an optional road-traffic toggle. It starts off, and the browser requests traffic tiles only when the user turns it on. The overlay is drawn below vehicles and can be disabled without affecting other layers. Its freshness, geographic coverage, traffic interpretation, legend, caching and licensing depend on the provider and must be verified before enabling it publicly. Use only a tile source whose license permits this use and supply whatever attribution or legend it requires.
+
+This adapter accepts standard XYZ raster tiles. It does not implement Google Maps' `TrafficLayer` API and must not be configured with undocumented Google tile URLs. A Google-specific integration would need the official supported API, credentials and applicable terms. Until an appropriate source is enabled and validated, the original road-traffic feedback remains unresolved.

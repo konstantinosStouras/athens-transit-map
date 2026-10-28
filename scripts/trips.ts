@@ -6,6 +6,7 @@
 import { writeFileSync } from "node:fs";
 import type { TripIndex } from "../src/lib/trip";
 import type { LineStatic, LinesIndex } from "../src/lib/types";
+import { validateTripIndex } from "../src/lib/trip-index-validation";
 
 const BASE = (process.env.VITE_STATIC_BASE || "https://angelospk.github.io/athens-transit-rt/static/v1").replace(/\/+$/, "");
 
@@ -38,5 +39,6 @@ for (const f of files) {
     });
   data.l[f.id] = variants;
 }
+validateTripIndex(data);
 writeFileSync("public/trips.json", JSON.stringify(data));
 console.log(`${files.length} lines, ${data.s.length} stops, ${Object.values(data.l).reduce((n, v) => n + Object.keys(v).length, 0)} variants`);

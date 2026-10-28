@@ -1,5 +1,6 @@
 import { displayStop } from "./transit-names";
 import type { Language } from "./translate";
+import { validateTripIndex } from "./trip-index-validation";
 // Trip planner: which lines go from one place to another, with no change or one. Loaded with the planner
 // only (dynamic import), as is public/trips.json, its stop index (scripts/trips.ts).
 
@@ -391,7 +392,7 @@ export function loadTripIndex(): Promise<TripIndex> {
   if (index) return index;
   const p = fetch(`${import.meta.env.BASE_URL}trips.json`).then(r => {
     if (!r.ok) throw new Error(`trips.json: HTTP ${r.status}`);
-    return r.json() as Promise<TripIndex>;
+    return r.json().then(validateTripIndex);
   });
   p.catch(() => { if (index === p) index = null; });   // the next call tries again
   return (index = p);

@@ -164,8 +164,11 @@
         <li class="empty">{tr("Δεν φορτώθηκε η λίστα γραμμών. Δοκίμασε ξανά σε λίγο.")}</li>
       {:else if !app.lines.length}
         <li class="empty">{tr("Φόρτωση γραμμών…")}</li>
-      {:else if !results.length}
-        <li class="empty">{tr("Καμία γραμμή για «")}{tr(query)}»</li>
+      {:else if !results.length && query.trim() !== "320"}
+        <li class="empty">{locale.language === "en" ? "No matching line in the current data." : "Δεν υπάρχει αντίστοιχη γραμμή στα τρέχοντα δεδομένα."}</li>
+      {/if}
+      {#if query.trim() === "320" && app.lines.length && !app.lineInfo.has("320")}
+        <li class="empty">{locale.language === "en" ? "Line 320 is missing from the current source." : "Η γραμμή 320 λείπει από την τρέχουσα πηγή."}{#if results.length} {locale.language === "en" ? "Similar results below are different lines." : "Τα παρόμοια αποτελέσματα παρακάτω είναι άλλες γραμμές."}{/if}</li>
       {/if}
       {#each results as l, i (l.id)}
         {@const sel = app.selected.includes(l.id)}

@@ -21,6 +21,7 @@
   import { lightenDark } from "./basemap";
   import { Fleet, routeGeom, type FleetEntry, type RouteGeom } from "./fleet";
   import { needsRecenter } from "./follow";
+  import { trafficTileTemplate } from "../traffic";
   import { bounds, routesFC, stopsFC, variantFC, type DrawnLine } from "./layers";
 
   setWorkerUrl(workerUrl);
@@ -31,6 +32,8 @@
   const VIEW_SETTLE_MS = 300;   // the map must rest this long before the city layer asks for tiles
   const DELAY_CLASSES = ["ontime", "late1", "late2", "late3", "none"];
   const STYLE = (dark: boolean) => `https://tiles.openfreemap.org/styles/${dark ? "dark" : "positron"}`;
+  const trafficCredit = import.meta.env.VITE_TRAFFIC_CREDIT?.trim();
+  const trafficTiles = trafficCredit ? trafficTileTemplate(import.meta.env.VITE_TRAFFIC_TILES) : null;
   const EMPTY = { type: "FeatureCollection" as const, features: [] };
   const COS_LAT = Math.cos((37.98 * Math.PI) / 180);
   const M_PER_PX_Z0 = 156_543.03 * COS_LAT;   // metres per pixel at zoom 0, at Athens
@@ -724,6 +727,18 @@
   });
 
   $effect(() => {
+    const m = map, visible = app.trafficOn;
+    if (!m || !loaded || !trafficTiles) return;
+    if (visible && !m.getSource("external-traffic")) {
+      m.addSource("external-traffic", { type: "raster", tiles: [trafficTiles], tileSize: 256 });
+      m.addLayer({ id: "external-traffic", type: "raster", source: "external-traffic", paint: { "raster-opacity": 0.8 } }, "speed");
+    } else if (!visible && m.getSource("external-traffic")) {
+      if (m.getLayer("external-traffic")) m.removeLayer("external-traffic");
+      m.removeSource("external-traffic");
+    }
+  });
+
+  $effect(() => {
     const m = map, d = dark;
     if (m && started && d !== styleDark) restyle(m, d);
   });
@@ -897,6 +912,7 @@
 </script>
 
 <div class="map" class:no-ages={!app.showAges && app.motion} {@attach setup}></div>
+{#if app.trafficOn && trafficTiles}<div class="traffic-credit">{trafficCredit}</div>{/if}
 {#if app.speedOn}<SpeedLegend meta={speedData?.meta ?? null} onclose={() => app.setSpeedOn(false)} />{/if}
 {#if Info}<Info {app} bind:open={app.infoOpen} bind:tab={app.infoTab} motion={app.motion} {ended} />{/if}
 
@@ -906,6 +922,7 @@
 
 <style>
   .map { position: absolute; inset: 0; }
+  .traffic-credit { position: absolute; left: 12px; bottom: 12px; z-index: 3; padding: 4px 8px; border-radius: 6px; background: var(--panel); color: var(--fg); font-size: 11px; }
   :global(.segpop b) { font-size: 15px; }
   :global(.segpop div) { font-size: 12px; }
   .nogl { position: absolute; inset: auto 16px 16px; padding: 12px 14px; border-radius: 12px;

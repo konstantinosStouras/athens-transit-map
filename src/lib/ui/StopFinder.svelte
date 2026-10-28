@@ -7,6 +7,7 @@
   import { ago, gtfsEnded } from "../format";
   import type { AppState } from "../state.svelte";
   import VehicleType from "./VehicleType.svelte";
+  import { arrivalsFor, parseArrivals, type ArrivalFeed } from "../arrivals";
   let { app, seed = null, onclose }: { app: AppState; seed?: { name: string; lat: number; lon: number } | null; onclose: () => void } = $props();
   const en = $derived(locale.language === "en");
   let points = $state.raw<StopPoint[]>([]);
@@ -16,6 +17,35 @@
   let origin = $state.raw<Pt | null>(null);
   let accuracy = $state(0), query = $state(untrack(() => seed?.name ?? "")), radius = $state(500), limit = $state(8);
   let selected = $state<StopPoint | null>(null);
+  const arrivalsUrl = import.meta.env.VITE_ARRIVALS_URL?.trim();
+  let arrivalFeed = $state.raw<ArrivalFeed | null>(null);
+  let arrivalUnavailable = $state(false);
+  $effect(() => {
+    const stop = selected, dataVersion = version;
+    if (!arrivalsUrl || !stop || !dataVersion) { arrivalFeed = null; arrivalUnavailable = false; return; }
+    let disposed = false;
+    let controller: AbortController | null = null;
+    const refresh = async () => {
+      controller?.abort();
+      const request = new AbortController();
+      controller = request;
+      try {
+        const url = new URL(arrivalsUrl, window.location.href);
+        url.searchParams.set("stop_index", String(stop.id));
+        url.searchParams.set("gtfs_version", dataVersion);
+        const response = await fetch(url, { signal: request.signal });
+        const parsed = response.ok ? parseArrivals(await response.json(), dataVersion, stop.id, Date.now() / 1000) : null;
+        if (!disposed && !request.signal.aborted) { arrivalFeed = parsed; arrivalUnavailable = !parsed; }
+      } catch {
+        if (!disposed && !request.signal.aborted) { arrivalFeed = null; arrivalUnavailable = true; }
+      }
+    };
+    arrivalFeed = null;
+    arrivalUnavailable = false;
+    void refresh();
+    const timer = setInterval(() => { if (!document.hidden) void refresh(); }, 30_000);
+    return () => { disposed = true; controller?.abort(); clearInterval(timer); };
+  });
   let gone = false;
   let locationRequest = 0;
   $effect(() => () => { gone = true; locationRequest++; });
@@ -102,13 +132,16 @@
         <p class="note">{en ? "Same-name stops can be on opposite sides of the road. Check the direction below." : "Στάσεις με ίδιο όνομα μπορεί να είναι απέναντι. Έλεγξε την κατεύθυνση παρακάτω."}</p>
         <p class="note">{en ? "Follow a direction to load its vehicles. Counts use fresh GPS and the reported next stop; they are not arrival times. No countdown does not mean no service." : "Ακολούθησε μια κατεύθυνση για να φορτωθούν τα οχήματά της. Τα πλήθη βασίζονται σε πρόσφατο GPS και τη δηλωμένη επόμενη στάση, όχι σε χρόνο άφιξης. Η απουσία ένδειξης δεν σημαίνει ότι δεν υπάρχει δρομολόγιο."}</p>
         {#if app.statusFailed}<p class="warning">{en ? "Connection problem. Live stop counts are unavailable." : "Πρόβλημα σύνδεσης. Τα ζωντανά πλήθη στάσεων δεν είναι διαθέσιμα."}</p>{/if}
+        {#if arrivalsUrl && arrivalUnavailable}<p class="note" role="status">{en ? "Real-time arrival predictions are currently unavailable." : "Οι προβλέψεις άφιξης δεν είναι διαθέσιμες αυτή τη στιγμή."}</p>{/if}
         {#each groups as group (group.key)}
           {@const service = group.first}
           {@const known = app.lineInfo.has(service.line)}
           {@const followed = app.selected.includes(service.line)}
           {@const blocked = !known || (!followed && app.selected.length >= 5)}
           {@const vehicles = mismatch || !app.status || app.statusFailed ? [] : group.services.flatMap(s => approachingStop(selected!, s, app.live[s.line], app.statics[s.line], app.serverNow / 1000)).sort((a,b) => a.stopsAway - b.stopsAway).slice(0,3)}
+          {@const arrivals = mismatch ? [] : arrivalsFor(arrivalFeed, service.line, group.services.map(s => s.variant), app.now / 1000)}
           <article><h4>{service.line} → {nameOf({ name: service.destination, name_en: service.destination_en })}</h4><VehicleType kind={app.lineInfo.get(service.line)?.kind} />
+            {#if arrivals.length}<p class="note">{en ? "Predicted arrival:" : "Προβλεπόμενη άφιξη:"} {arrivals.map(a => `${Math.max(0, Math.ceil((a.arrival - app.now / 1000) / 60))}′`).join(" · ")}</p>{/if}
             {#if !service.boarding}<p class="note">{en ? "Terminates here; no boarding in this direction." : "Τερματίζει εδώ· δεν υπάρχει επιβίβαση σε αυτή την κατεύθυνση."}</p>{/if}
             <button type="button" disabled={blocked} onclick={() => follow(group.services)}>{followed ? (en ? "Show direction" : "Εμφάνιση κατεύθυνσης") : !service.boarding ? (en ? "Show arriving direction" : "Εμφάνιση κατεύθυνσης άφιξης") : (en ? "Follow this direction" : "Ακολούθησε την κατεύθυνση")}</button>
             {#if blocked}<p class="note">{!known ? (en ? "Not available in the current line index." : "Δεν υπάρχει στο τρέχον αρχείο γραμμών.") : (en ? "You can follow up to five lines. Remove one to add this line." : "Μπορείς να ακολουθείς έως πέντε γραμμές. Αφαίρεσε μία για να προσθέσεις αυτή.")}</p>{/if}

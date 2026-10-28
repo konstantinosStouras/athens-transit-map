@@ -25,6 +25,10 @@ jobs:
       - run: bun run test
       - run: bun run check
       - run: bun run build --base=/athens-transit-map/
+        env:
+          VITE_ARRIVALS_URL: ${{ vars.VITE_ARRIVALS_URL }}
+          VITE_TRAFFIC_TILES: ${{ vars.VITE_TRAFFIC_TILES }}
+          VITE_TRAFFIC_CREDIT: ${{ vars.VITE_TRAFFIC_CREDIT }}
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
