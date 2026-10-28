@@ -19,6 +19,12 @@ Do not request or display Google's route description or steps alongside the map.
 Show Google Maps attribution and the required walking beta warning. Check the actual
 billing-account address, not merely the Google account's country setting.
 
+Before activation, clarify walking mode's beta status with Google Maps support or the
+applicable agreement: the EEA Pre-GA terms section 6.5(b) restrict Pre-GA offerings
+with non-Google maps. The general EEA Routes integration guide alone does not settle
+whether that restriction applies to WALK mode. Keep the integration disabled until
+eligibility is confirmed; do not assume the core Routes allowance overrides it.
+
 ## No-charge constraints
 
 Google Maps requires a billing account and is pay-as-you-go, NOT a contractual hard-€0
@@ -105,6 +111,8 @@ These tests do not substitute for a deployment test of D1 and the real Google se
 - https://developers.google.com/maps/billing-and-pricing/pricing
 - https://developers.google.com/maps/billing-and-pricing/overview
 - https://developers.google.com/maps/comms/eea/routes
+- https://cloud.google.com/terms/maps-platform/eea/maps-service-terms
+- https://developers.google.com/maps/documentation/routes/route-opt
 - https://developers.google.com/maps/documentation/routes/usage-and-billing
 - https://developers.cloudflare.com/workers/platform/pricing/
 - https://developers.cloudflare.com/d1/reference/faq/
