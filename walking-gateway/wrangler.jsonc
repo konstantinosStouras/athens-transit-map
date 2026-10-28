@@ -1,0 +1,9 @@
+{
+  "name": "oasa-walking",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "vars": { "WALKING_ENABLED": "false", "ALLOWANCE_MONTH": "", "MONTHLY_LIMIT": "9000" },
+  "d1_databases": [{ "binding": "DB", "database_name": "oasa-walking-budget", "database_id": "REPLACE_AFTER_CREATING_FREE_D1_DATABASE" }]
+}

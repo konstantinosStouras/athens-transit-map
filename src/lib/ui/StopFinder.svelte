@@ -8,7 +8,7 @@
   import type { AppState } from "../state.svelte";
   import VehicleType from "./VehicleType.svelte";
   import OfficialArrivalsLink from "./OfficialArrivalsLink.svelte";
-  import { walkingLabel } from "../walking";
+  import WalkingDetails from './WalkingDetails.svelte';
   import { walkUrl } from "../maps";
   import { arrivalsFor, parseArrivals, type ArrivalFeed } from "../arrivals";
   let { app, seed = null, onclose }: { app: AppState; seed?: { name: string; lat: number; lon: number } | null; onclose: () => void } = $props();
@@ -151,8 +151,7 @@
       <section class="selected" aria-labelledby="selected-stop-title">
         <h3 id="selected-stop-title" tabindex="-1">{nameOf(selected)}</h3>
         {#if origin && app.walking[0]?.kind === "nearby"}
-          <p>{walkingLabel(app.walking[0], locale.language)}</p>
-          <p class="note">{en ? "The dashed map connection is a straight-line estimate. Streets and crossings can make the walk longer." : "Η διακεκομμένη σύνδεση είναι εκτίμηση σε ευθεία. Δρόμοι και διαβάσεις μπορεί να αυξάνουν τη διαδρομή."}</p>
+          <WalkingDetails {app} />
           <a href={walkUrl([selected.lat, selected.lon], origin)} target="_blank" rel="noopener noreferrer">{en ? "Walking directions in Google Maps ↗" : "Οδηγίες πεζή στο Google Maps ↗"}</a>
         {/if}
         <OfficialArrivalsLink stop={selected} {version} />

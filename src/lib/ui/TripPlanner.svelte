@@ -17,7 +17,8 @@
   import type { AppState } from "../state.svelte";
   import Bell from "./Bell.svelte";
   import VehicleType from "./VehicleType.svelte";
-  import { closestPoint, walkingLabel, type WalkingLeg } from "../walking";
+  import { closestPoint, type WalkingLeg } from "../walking";
+  import WalkingDetails from './WalkingDetails.svelte';
   import { walkUrl } from "../maps";
   import { alertTargets, anyMetro, boardings, centre, distM, findTransfers, findTrips, geocode, legTrip, loadTripIndex, metroDirect, metroPlaces, nearestStation, places, searchPlaces,
     suggest, termini, type Pt, type TripIndex, type TripLine, type TripTransfer } from "../trip";
@@ -209,7 +210,7 @@
     const leg = app.walking.find(w => w.kind === "board");
     if (!leg) return;
     if (phone()) folded = true;
-    void tick().then(() => app.fitPoints([leg.from, leg.to]));
+    void tick().then(() => app.fitPoints(leg.route ? leg.route.geometry.coordinates.map(p => [p[1], p[0]]) : [leg.from, leg.to]));
   }
   function solo(t: TripLine) {
     const v = t.variants[0];
@@ -454,18 +455,18 @@
     {#if locating}<p class="note">{tr("Εντοπισμός…")}</p>{/if}
 
     {#if err}<p class="warn" role="status">{tr(err)}</p>{/if}
-    {#if byMetro}<p class="metro">{tr("🚇 Με ")}{tr(byMetro.line)}: {tr(byMetro.from)} → {tr(byMetro.to)} · 🚶 {tr(metres(byMetro.walk))} {locale.language === "en" ? "(straight-line estimate)" : "(εκτίμηση σε ευθεία)"}</p>{/if}
+    {#if byMetro}<p class="metro">{tr("🚇 Με ")}{tr(byMetro.line)}: {tr(byMetro.from)} → {tr(byMetro.to)} · 🚶 {tr(metres(byMetro.walk))} {locale.language === "en" ? "(straight line; walking route not calculated)" : "(σε ευθεία· χωρίς υπολογισμό πεζής πορείας)"}</p>{/if}
     {#if failed}
       <p class="warn">{tr("Δεν φόρτωσαν οι στάσεις. ")}<button type="button" class="link" onclick={load}>{tr("Ξανά")}</button></p>
     {:else if !data}
       <p class="note">{tr("Φόρτωση στάσεων…")}</p>
     {:else if tooClose}
-      <p class="note">{#if anyEnd && walkTo}{tr("Ο σταθμός ")}{nameOf(walkTo)}{tr(" είναι ")}{tr(metres(walkTo.d))}{locale.language === "en" ? " away in a straight line." : " σε ευθεία."}{:else}{locale.language === "en" ? "Close enough to walk: " : "Κοντινή απόσταση για περπάτημα: "}{tr(metres(endDistance ?? 0))}{locale.language === "en" ? " in a straight line." : " σε ευθεία."}{/if}</p>
+      <p class="note">{#if anyEnd && walkTo}{tr("Ο σταθμός ")}{nameOf(walkTo)}{tr(" είναι ")}{tr(metres(walkTo.d))}{locale.language === "en" ? " away in a straight line." : " σε ευθεία."}{:else}{locale.language === "en" ? "Nearby endpoints: " : "Κοντινά σημεία: "}{tr(metres(endDistance ?? 0))}{locale.language === "en" ? " in a straight line." : " σε ευθεία."}{/if}</p>
     {:else if trips && !trips.length && !xfers.length}
       <p class="note">{locale.language === "en" ? "No route found with stops within 500 m of each end. Try a nearby starting point or destination." : "Δεν βρέθηκε διαδρομή με στάσεις έως 500 μ. σε ευθεία από κάθε σημείο. Δοκίμασε κοντινή αφετηρία ή προορισμό."}</p>
     {:else if trips}
-      <p class="note">{locale.language === "en" ? "Choose a journey below to show its lines and stops. Dashed blue links show walking distances in a straight line, not a street route." : "Διάλεξε διαδρομή παρακάτω για γραμμές και στάσεις. Οι μπλε διακεκομμένες συνδέσεις δείχνουν αποστάσεις πεζή σε ευθεία, όχι πορεία στους δρόμους."}</p>
-      {#if picked && app.walking[0]}<div class="walk-summary" role="status"><strong>{locale.language === "en" ? "Shown on map: " : "Στον χάρτη: "}{picked.replace(">", " → ")}</strong><span>{walkingLabel(app.walking[0], locale.language)} → {app.walking[0].name}</span><button type="button" onclick={focusWalk}>{locale.language === "en" ? "Show walk to stop" : "Δείξε τη μετάβαση στη στάση"}</button><a href={walkUrl(app.walking[0].to, app.walking[0].from)} target="_blank" rel="noopener noreferrer">{locale.language === "en" ? "Walking directions in Google Maps ↗" : "Οδηγίες πεζή στο Google Maps ↗"}</a></div>{/if}
+      <p class="note">{locale.language === "en" ? "Choose a journey below to show its lines and stops. Calculate the walking route separately, or open Google Maps." : "Διάλεξε διαδρομή παρακάτω για γραμμές και στάσεις. Υπολόγισε χωριστά τη διαδρομή πεζή ή άνοιξε το Google Maps."}</p>
+      {#if picked && app.walking[0]}<div class="walk-summary" role="status"><strong>{locale.language === "en" ? "Shown on map: " : "Στον χάρτη: "}{picked.replace(">", " → ")}</strong><WalkingDetails {app} /><button type="button" onclick={focusWalk}>{locale.language === "en" ? "Show boarding stop on map" : "Δείξε τη στάση επιβίβασης στον χάρτη"}</button><a href={walkUrl(app.walking[0].to, app.walking[0].from)} target="_blank" rel="noopener noreferrer">{locale.language === "en" ? "Walking directions in Google Maps ↗" : "Οδηγίες πεζή στο Google Maps ↗"}</a></div>{/if}
       {#if !trips.length}<p class="note">{tr("Καμία γραμμή λεωφορείου δεν πάει χωρίς αλλαγή.")}</p>{/if}
       <ol class="results" bind:this={resultsEl}>
         {#each trips as t, k (t.line)}
@@ -480,7 +481,6 @@
               <span><b>{tr(mins(t.min))}</b> {tr(stop(v.from))} → {tr(offAt(v.to))}</span>
               <VehicleType kind={info?.kind} />
               <small>{#if going(t)}{tr("προς ")}{tr(going(t))} · {/if}{tr(t.stops)} {tr(t.stops === 1 ? "στάση" : "στάσεις")}{#if k >= MAX_LINES}{tr(" · εκτός χάρτη (έως ")}{tr(MAX_LINES)}){/if}</small>
-              <small class="walking">🚶 {locale.language === "en" ? "Walking" : "Περπάτημα"}: {tr(metres(t.walk))} {locale.language === "en" ? "(straight-line estimate)" : "(εκτίμηση σε ευθεία)"}</small>
             </button>
             <a class="maps" href={mapsTo(v.from)} target="_blank" rel="noopener" title={tr("Με τα πόδια ως τη στάση " + (stop(v.from)) + ", στο Google Maps")}
               aria-label={tr("Με τα πόδια ως τη στάση " + (stop(v.from)) + ", στο Google Maps")}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -503,7 +503,6 @@
                 <span><b>{tr(mins(x.min))}</b> {tr(stop(a.from))} → {tr(stop(a.to))}{tr(", αλλαγή: ")}{tr(stop(b.from))} → {tr(offAt(b.to))}</span>
                 <span><VehicleType kind={app.lineInfo.get(a.line)?.kind} /> → <VehicleType kind={app.lineInfo.get(b.line)?.kind} /></span>
                 <small>{tr(a.stops + b.stops)}{tr(" στάσεις · με ~5′ αναμονή")}</small>
-                <small class="walking">🚶 {locale.language === "en" ? "Walking" : "Περπάτημα"}: {tr(metres(x.walk + x.xfer))} {locale.language === "en" ? "(straight-line estimate, including transfer)" : "(εκτίμηση σε ευθεία, μαζί με την αλλαγή)"}</small>
               </button>
               <a class="maps" href={mapsTo(a.from)} target="_blank" rel="noopener" title={tr("Με τα πόδια ως τη στάση " + (stop(a.from)) + ", στο Google Maps")}
                 aria-label={tr("Με τα πόδια ως τη στάση " + (stop(a.from)) + ", στο Google Maps")}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -584,7 +583,7 @@
     {/if}
 
     <div class="foot">
-      {#if trips?.length || xfers.length}<small>{tr("Χρόνοι κατά προσέγγιση, χωρίς την αναμονή στη στάση.")}</small>{/if}
+      {#if trips?.length || xfers.length}<small>{locale.language === 'en' ? 'Indicative journey times use approximate walking and exclude the initial wait. They are not live arrival predictions.' : 'Οι ενδεικτικοί χρόνοι χρησιμοποιούν προσεγγιστικό περπάτημα και δεν περιλαμβάνουν την αρχική αναμονή. Δεν είναι ζωντανές προβλέψεις άφιξης.'}</small>{/if}
       {#if data?.stale}<small>{tr("Στάσεις από ")}{tr(data.stale)}{tr("· μπορεί να έχουν αλλάξει.")}</small>{/if}
       {#if geo?.places.length}<small>{tr("Περιοχές: © OpenStreetMap")}</small>{/if}
     </div>
@@ -674,7 +673,7 @@
   select { min-height: 34px; padding: 0 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--control);
     color: var(--fg); font-size: 16px; }
   .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px; color: var(--muted); font-size: 12px; }
-  .walking { display: block; margin-top: 2px; }
+
   .note { display: block; margin: 8px 0 0; color: var(--muted); font-size: 12px; }
   .warn { margin: 8px 0 0; color: var(--late2); }
   .link { border: 0; background: none; color: var(--accent); text-decoration: underline; cursor: pointer; font-size: inherit; }

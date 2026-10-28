@@ -23,7 +23,7 @@
   import { Fleet, routeGeom, type FleetEntry, type RouteGeom } from "./fleet";
   import { needsRecenter } from "./follow";
   import { trafficTileTemplate } from "../traffic";
-  import { walkingFC, walkingLabel, walkingDistance } from "../walking";
+  import { walkingFC, walkingLabel } from "../walking";
   import { bounds, routesFC, stopsFC, variantFC, type DrawnLine } from "./layers";
 
   setWorkerUrl(workerUrl);
@@ -841,13 +841,15 @@
     if (!loaded || !map) return;
     const legs = app.walking, language = locale.language;
     (map.getSource("walking") as GeoJSONSource).setData(walkingFC(legs));
-    const markers = legs.filter(leg => walkingDistance(leg) >= 5).map(leg => {
+    const markers = legs.filter(leg => leg.route).map(leg => {
       const el = document.createElement("div");
       el.className = "walking-label";
       el.textContent = walkingLabel(leg, language);
       el.title = leg.name;
+      const path = leg.route!.geometry.coordinates;
+      const mid = path[Math.floor(path.length / 2)];
       return new Marker({ element: el, anchor: "bottom", offset: [0, -8] })
-        .setLngLat([(leg.from[1] + leg.to[1]) / 2, (leg.from[0] + leg.to[0]) / 2]).addTo(map!);
+        .setLngLat([mid[0], mid[1]]).addTo(map!);
     });
     return () => markers.forEach(marker => marker.remove());
   });
@@ -997,6 +999,7 @@
 </script>
 
 <div class="map" class:no-ages={!app.showAges && app.motion} {@attach setup}></div>
+{#if app.walking.some(leg => leg.route)}<div class="walking-credit"><span translate="no">Google Maps</span> · {locale.language === 'en' ? 'Walking routes are in beta; sidewalks or pedestrian paths may be missing.' : 'Δοκιμαστικές πεζές διαδρομές· μπορεί να λείπουν πεζοδρόμια ή πεζόδρομοι.'}</div>{/if}
 {#if app.trafficOn && trafficTiles}<div class="traffic-credit">{trafficCredit}</div>{/if}
 {#if app.speedOn}<SpeedLegend meta={speedData?.meta ?? null} onclose={() => app.setSpeedOn(false)} />{/if}
 {#if Info}<Info {app} bind:open={app.infoOpen} bind:tab={app.infoTab} motion={app.motion} {ended} />{/if}
@@ -1007,6 +1010,7 @@
 
 <style>
   .map { position: absolute; inset: 0; }
+  .walking-credit { position: absolute; bottom: 36px; right: 12px; max-width: min(320px, calc(100vw - 24px)); z-index: 3; padding: 6px 8px; border-radius: 6px; background: var(--panel); color: var(--fg); font: 400 12px/1.4 sans-serif; }
   .traffic-credit { position: absolute; left: 12px; bottom: 12px; z-index: 3; padding: 4px 8px; border-radius: 6px; background: var(--panel); color: var(--fg); font-size: 11px; }
   :global(.segpop b) { font-size: 15px; }
   :global(.segpop div) { font-size: 12px; }
