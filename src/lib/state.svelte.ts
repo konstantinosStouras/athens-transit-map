@@ -60,6 +60,7 @@ const median = (xs: number[]) => {
 };
 
 export class AppState {
+  stopRequest = $state.raw<{ name: string; lat: number; lon: number } | null>(null);
   infoOpen = $state(false);
   infoTab = $state<"sources" | "stats">("sources");
   lines = $state.raw<LineInfo[]>([]);

@@ -35,6 +35,10 @@
   // The bar shrinks to its chips and buttons when nothing is open under it.
   const compact = $derived(collapsed && !searching);
   let alertHelp = $state(false);
+  let stopsOpen = $state(false);
+  $effect(() => {
+    if (app.stopRequest) { stopsOpen = true; mobileCollapsed = false; pop = null; alertHelp = false; }
+  });
 
   // Focus returns to the button that opened a popover.
   async function refocus(p: "layers" | "help" | "trip") {
@@ -145,10 +149,24 @@
   </nav>
 
   <div class="service-actions" role="group" aria-label={locale.language === "en" ? "Data and alerts" : "Δεδομένα και ειδοποιήσεις"}>
+    <button type="button" aria-expanded={stopsOpen} aria-controls="stop-finder" onclick={() => { app.stopRequest = null; stopsOpen = !stopsOpen; pop = null; alertHelp = false; }}>{locale.language === "en" ? "Stops near you" : "Στάσεις κοντά σου"}</button>
     <button type="button" onclick={() => { app.infoTab = "stats"; app.infoOpen = true; }}>{locale.language === "en" ? "Network statistics" : "Στατιστικά δικτύου"}</button>
     <button type="button" onclick={() => { app.infoTab = "sources"; app.infoOpen = true; }}>{locale.language === "en" ? "Data and limitations" : "Δεδομένα και περιορισμοί"}</button>
     <button type="button" aria-expanded={alertHelp} aria-controls="alert-guide" onclick={() => alertHelp = !alertHelp}><Bell />{locale.language === "en" ? " Set up an alert" : " Ρύθμιση ειδοποίησης"}</button>
   </div>
+  {#if stopsOpen}
+    <div id="stop-finder">
+      {#key app.stopRequest}
+        {#await import("./StopFinder.svelte")}
+          <p role="status">{locale.language === "en" ? "Loading stops…" : "Φόρτωση στάσεων…"}</p>
+        {:then module}
+          <module.default {app} seed={app.stopRequest} onclose={() => { stopsOpen = false; app.stopRequest = null; }} />
+        {:catch}
+          <p role="status">{locale.language === "en" ? "Stop finder could not load. Close it and try again." : "Η αναζήτηση στάσεων δεν φόρτωσε. Κλείσε την και δοκίμασε ξανά."}</p>
+        {/await}
+      {/key}
+    </div>
+  {/if}
   {#if alertHelp}
     <section id="alert-guide" class="alert-guide" aria-label={locale.language === "en" ? "Notification setup" : "Οδηγίες ειδοποιήσεων"}>
       <ol>

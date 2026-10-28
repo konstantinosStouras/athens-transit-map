@@ -627,8 +627,9 @@
       }
       const stop = m.queryRenderedFeatures(e.point, { layers: ["stops"] })[0];
       if (stop) {
-        popup.setLngLat((stop.geometry as GeoJSON.Point).coordinates as [number, number])
-          .setText(String(stop.properties.name)).addTo(m);
+        popup.remove();
+        const [lon, lat] = (stop.geometry as GeoJSON.Point).coordinates;
+        app.stopRequest = { name: String(stop.properties.name), lat, lon };
         return;
       }
       const station = nearestStation(m, e.point);
