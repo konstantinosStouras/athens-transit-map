@@ -207,7 +207,7 @@
 
   .card { position: absolute; z-index: 6; right: 66px; bottom: 28px; width: 380px; padding: 12px 14px;
     background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
-    backdrop-filter: blur(8px); }
+    }
   .top { touch-action: none; }
   .grab { display: none; width: 100%; height: 14px; margin: -8px 0 2px; padding: 0; border: 0; background: none; cursor: grab; }
   .grab span { display: block; width: 40px; height: 5px; margin: 0 auto; border-radius: 3px; background: var(--border); }

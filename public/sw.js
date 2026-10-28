@@ -12,5 +12,12 @@ self.addEventListener("push", e => {
 self.addEventListener("notificationclick", e => {
   e.notification.close();
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true })
-    .then(cs => (cs[0] ? cs[0].focus() : self.clients.openWindow(self.registration.scope))));
+    .then(cs => {
+      const map = new URL(self.registration.scope);
+      const client = cs.find(c => {
+        const url = new URL(c.url);
+        return url.origin === map.origin && (url.pathname === map.pathname || url.pathname === `${map.pathname}index.html`);
+      });
+      return client ? client.focus() : self.clients.openWindow(map.href);
+    }));
 });

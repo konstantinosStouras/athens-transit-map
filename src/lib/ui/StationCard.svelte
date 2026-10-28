@@ -26,7 +26,7 @@
 <style>
   .card { position: absolute; z-index: 6; left: 12px; bottom: 28px; width: 340px; padding: 12px 14px;
     background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
-    backdrop-filter: blur(8px); }
+    }
   header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
   h2 { flex: 1; margin: 0; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   p { margin: 0 0 10px; color: var(--muted); font-size: 12px; }

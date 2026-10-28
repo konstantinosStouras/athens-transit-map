@@ -9,6 +9,7 @@
   import StationCard from "./lib/ui/StationCard.svelte";
   import { locale, t } from "./lib/i18n.svelte";
   import { applyTheme } from "./lib/theme";
+  import { InstallState } from "./lib/install.svelte";
 
   $effect(() => {
     document.documentElement.lang = locale.language;
@@ -17,6 +18,8 @@
   });
   const app = new AppState();
   const account = new Account(app);
+  const install = new InstallState();
+  onMount(() => install.start());
   onMount(() => account.start());
   let started = false;
   $effect(() => { if (account.allowed && !started) { started = true; app.init(); } });
@@ -27,7 +30,7 @@
 
 {#if account.allowed}
 <MapView {app} />
-<Panel {app} signedIn={account.verified} onaccount={() => account.open = true} />
+<Panel {app} {install} signedIn={account.verified} onaccount={() => account.open = true} />
 <InfoCard {app} />
 <StationCard {app} />
 {/if}

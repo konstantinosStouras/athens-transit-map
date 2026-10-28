@@ -5,13 +5,14 @@
   import { directionGroups, focusGroup, otherDirection } from "../directions";
   import { ago, clock, duration, fmtMinutes } from "../format";
   import { STALE_S, type AppState } from "../state.svelte";
+  import type { InstallState } from "../install.svelte";
   import Bell from "./Bell.svelte";
   import HelpPop from "./HelpPop.svelte";
   import LinePicker from "./LinePicker.svelte";
   import MetroToggles from "./MetroToggles.svelte";
   import StatusBanner from "./StatusBanner.svelte";
 
-  let { app, onaccount, signedIn }: { app: AppState; onaccount: () => void; signedIn: boolean } = $props();
+  let { app, install, onaccount, signedIn }: { app: AppState; install: InstallState; onaccount: () => void; signedIn: boolean } = $props();
 
   // Phones start compact: the map matters more than the stats at a bus stop.
   let collapsed = $state(matchMedia("(max-width: 719px)").matches);
@@ -35,6 +36,9 @@
   // The bar shrinks to its chips and buttons when nothing is open under it.
   const compact = $derived(collapsed && !searching);
   let alertHelp = $state(false);
+  let installHelp = $state(false);
+  let menuOpen = $state(false);
+  let menuButton: HTMLButtonElement | undefined = $state();
   let stopsOpen = $state(false);
   $effect(() => {
     if (app.stopRequest) { stopsOpen = true; mobileCollapsed = false; pop = null; alertHelp = false; }
@@ -68,6 +72,7 @@
   // Escape: a popover first, then the dropdown (when focus is in it; the search closes its own list).
   function onEscape(e: KeyboardEvent) {
     if (e.key !== "Escape") return;
+    if (menuOpen) { menuOpen = false; e.stopPropagation(); void tick().then(() => menuButton?.focus()); return; }
     if (pop && pop !== "trip") {
       const p = pop;
       pop = null;
@@ -117,8 +122,42 @@
 <svelte:window onclick={e => { if (pop && pop !== "trip" && !(e.target as Element).closest?.(".pop, .tool")) pop = null; }}
   onkeydowncapture={onEscape} />
 
+    <button type="button" class="account-control" class:signed-in={signedIn} onclick={onaccount} aria-label={locale.language === "en" ? (signedIn ? "My account" : "Sign in or register") : (signedIn ? "Ο λογαριασμός μου" : "Σύνδεση ή εγγραφή")} title={locale.language === "en" ? (signedIn ? "My account" : "Sign in or register") : (signedIn ? "Ο λογαριασμός μου" : "Σύνδεση ή εγγραφή")}>
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 21v-2a7.5 7.5 0 0 1 15 0v2"/></svg>
+      <span>{locale.language === "en" ? (signedIn ? "Account" : "Sign in") : (signedIn ? "Λογαριασμός" : "Σύνδεση")}</span>
+    </button>
+
+{#if menuOpen}
+<aside class="menu-drawer" aria-label={locale.language === "en" ? "Main menu" : "Κεντρικό μενού"}>
+  <div class="menu-heading"><strong>OASA · Live</strong><button type="button" onclick={() => { menuOpen = false; void tick().then(() => menuButton?.focus()); }} aria-label={locale.language === "en" ? "Close menu" : "Κλείσιμο μενού"}>×</button></div>
+  <p class="menu-label">{locale.language === "en" ? "Language" : "Γλώσσα"}</p>
+    <div class="language" role="group" aria-label={locale.language === "el" ? "Γλώσσα" : "Language"}>
+      <button type="button" lang="el" aria-label="Ελληνικά" aria-pressed={locale.language === "el"} onclick={() => setLanguage("el")}><img src={`${import.meta.env.BASE_URL}flags/el.svg`} alt="" width="27" height="18" /></button>
+      <button type="button" lang="en" aria-label="English" aria-pressed={locale.language === "en"} onclick={() => setLanguage("en")}><img src={`${import.meta.env.BASE_URL}flags/en.svg`} alt="" width="27" height="18" /></button>
+    </div>
+
+  <p class="menu-label">{locale.language === "en" ? "Explore" : "Εξερεύνηση"}</p>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div role="presentation" onclick={(e) => { if ((e.target as Element).closest("button")) { menuOpen = false; mobileCollapsed = false; } }}>
+  <div class="service-actions" role="group" aria-label={locale.language === "en" ? "Data and alerts" : "Δεδομένα και ειδοποιήσεις"}>
+    <button type="button" aria-expanded={stopsOpen} aria-controls="stop-finder" onclick={() => { app.stopRequest = null; stopsOpen = !stopsOpen; pop = null; alertHelp = false; }}>{locale.language === "en" ? "Stops near you" : "Στάσεις κοντά σου"}</button>
+    <button type="button" onclick={() => { app.infoTab = "stats"; app.infoOpen = true; }}>{locale.language === "en" ? "Network statistics" : "Στατιστικά δικτύου"}</button>
+    <button type="button" onclick={() => { app.infoTab = "sources"; app.infoOpen = true; }}>{locale.language === "en" ? "Data and limitations" : "Δεδομένα και περιορισμοί"}</button>
+    <button type="button" aria-expanded={alertHelp} aria-controls="alert-guide" onclick={() => alertHelp = !alertHelp}><Bell />{locale.language === "en" ? " Set up an alert" : " Ρύθμιση ειδοποίησης"}</button>
+    <button type="button" aria-expanded={installHelp} aria-controls="install-guide" onclick={() => installHelp = !installHelp}>{locale.language === "en" ? "Install app" : "Εγκατάσταση εφαρμογής"}</button>
+  </div>
+  </div>
+  <p class="menu-label">{locale.language === "en" ? "News and feedback" : "Νέα και σχόλια"}</p>
+  <nav class="shortcuts" aria-label={locale.language === "en" ? "About and feedback" : "Νέα και σχόλια"}>
+    <a href={`${import.meta.env.BASE_URL}updates.html?lang=${locale.language}`} title={tr("Τι νέο υπάρχει ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></svg><span>{locale.language === "en" ? "What’s new" : "Νέα"}</span></a>
+    <a href={`${import.meta.env.BASE_URL}submit-feedback.html?lang=${locale.language}`} title={tr("Στείλε σχόλιο με εικόνα ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5a9.5 9.5 0 1 1 19 0Z"/><path d="M7 9h9M7 13h6"/></svg><span>{locale.language === "en" ? "Feedback" : "Σχόλιο"}</span></a>
+    <a href={`${import.meta.env.BASE_URL}feedback.html?lang=${locale.language}`} title={tr("Σχόλια μέχρι σήμερα ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M16 4a3 3 0 0 1 0 6M19 21v-3a7 7 0 0 0-2-5"/></svg><span>{locale.language === "en" ? "Community" : "Κοινότητα"}</span></a>
+  </nav>
+</aside>
+{/if}
 <section class="panel" class:mobile-collapsed={narrow.current && mobileCollapsed} class:compact inert={!!pop && pop !== "trip" && narrow.current} aria-label={tr("Πίνακας ελέγχου")}>
   <header class="panel-header">
+    <button type="button" class="menu-toggle" bind:this={menuButton} aria-expanded={menuOpen} aria-label={locale.language === "en" ? "Open menu" : "Άνοιγμα μενού"} onclick={() => menuOpen = !menuOpen}><span aria-hidden="true">☰</span></button>
     {#if narrow.current}
       <button type="button" class="panel-toggle brand" onclick={toggleMobilePanel} aria-expanded={!mobileCollapsed} aria-controls="mobile-panel-content"
         aria-label={locale.language === "en" ? (mobileCollapsed ? "Expand control panel" : "Collapse control panel") : (mobileCollapsed ? "Άνοιγμα πίνακα ελέγχου" : "Σύμπτυξη πίνακα ελέγχου")}
@@ -127,33 +166,32 @@
         <svg viewBox="0 0 12 8" width="12" height="8" aria-hidden="true" class:expanded={!mobileCollapsed}><path d="m1 1 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     {:else}<span class="brand">{tr("ΟΑΣΑ · Live")}</span>{/if}
-    <div class="language" role="group" aria-label={locale.language === "el" ? "Γλώσσα" : "Language"}>
-      <button type="button" lang="el" aria-label="Ελληνικά" aria-pressed={locale.language === "el"} onclick={() => setLanguage("el")}><img src={`${import.meta.env.BASE_URL}flags/el.svg`} alt="" width="27" height="18" /></button>
-      <button type="button" lang="en" aria-label="English" aria-pressed={locale.language === "en"} onclick={() => setLanguage("en")}><img src={`${import.meta.env.BASE_URL}flags/en.svg`} alt="" width="27" height="18" /></button>
-    </div>
-    <button type="button" class="account-control" class:signed-in={signedIn} onclick={onaccount} aria-label={locale.language === "en" ? (signedIn ? "My account" : "Sign in or register") : (signedIn ? "Ο λογαριασμός μου" : "Σύνδεση ή εγγραφή")} title={locale.language === "en" ? (signedIn ? "My account" : "Sign in or register") : (signedIn ? "Ο λογαριασμός μου" : "Σύνδεση ή εγγραφή")}>
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M4.5 21v-2a7.5 7.5 0 0 1 15 0v2"/></svg>
-      <span>{locale.language === "en" ? (signedIn ? "Account" : "Sign in") : (signedIn ? "Λογαριασμός" : "Σύνδεση")}</span>
-    </button>
   </header>
   <div id="mobile-panel-content" hidden={narrow.current && mobileCollapsed}>
-  <nav class="shortcuts" aria-label={locale.language === "en" ? "About and feedback" : "Νέα και σχόλια"}>
-    <a href={`${import.meta.env.BASE_URL}updates.html?lang=${locale.language}`} title={tr("Τι νέο υπάρχει ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></svg><span>{locale.language === "en" ? "What’s new" : "Νέα"}</span></a>
-    <a href={`${import.meta.env.BASE_URL}submit-feedback.html?lang=${locale.language}`} title={tr("Στείλε σχόλιο με εικόνα ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5a9.5 9.5 0 1 1 19 0Z"/><path d="M7 9h9M7 13h6"/></svg><span>{locale.language === "en" ? "Feedback" : "Σχόλιο"}</span></a>
-    <a href={`${import.meta.env.BASE_URL}feedback.html?lang=${locale.language}`} title={tr("Σχόλια μέχρι σήμερα ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="7" r="3"/><path d="M2 21v-3a7 7 0 0 1 14 0v3M16 4a3 3 0 0 1 0 6M19 21v-3a7 7 0 0 0-2-5"/></svg><span>{locale.language === "en" ? "Community" : "Κοινότητα"}</span></a>
-  </nav>
+
   <h1 class="sr">{tr("Λεωφορεία ΟΑΣΑ")}</h1>
   <nav class="primary" aria-label={tr("Βασικές ενέργειες")}>
     <button type="button" aria-pressed={pop !== "trip"} onclick={() => { pop = null; collapsed = false; searching = true; void tick().then(() => document.querySelector<HTMLInputElement>(".picker input")?.focus()); }}>{tr("⌕ Βρες γραμμή")}</button>
     <button type="button" aria-pressed={pop === "trip"} aria-expanded={pop === "trip"} bind:this={tripButton} onclick={() => toggle("trip")}>{tr("↗ Σχεδίασε διαδρομή")}</button>
   </nav>
 
-  <div class="service-actions" role="group" aria-label={locale.language === "en" ? "Data and alerts" : "Δεδομένα και ειδοποιήσεις"}>
-    <button type="button" aria-expanded={stopsOpen} aria-controls="stop-finder" onclick={() => { app.stopRequest = null; stopsOpen = !stopsOpen; pop = null; alertHelp = false; }}>{locale.language === "en" ? "Stops near you" : "Στάσεις κοντά σου"}</button>
-    <button type="button" onclick={() => { app.infoTab = "stats"; app.infoOpen = true; }}>{locale.language === "en" ? "Network statistics" : "Στατιστικά δικτύου"}</button>
-    <button type="button" onclick={() => { app.infoTab = "sources"; app.infoOpen = true; }}>{locale.language === "en" ? "Data and limitations" : "Δεδομένα και περιορισμοί"}</button>
-    <button type="button" aria-expanded={alertHelp} aria-controls="alert-guide" onclick={() => alertHelp = !alertHelp}><Bell />{locale.language === "en" ? " Set up an alert" : " Ρύθμιση ειδοποίησης"}</button>
-  </div>
+
+  {#if installHelp}
+    <section id="install-guide" class="alert-guide" aria-label={locale.language === "en" ? "Install the app" : "Εγκατάσταση εφαρμογής"}>
+      {#if install.standalone}
+        <p role="status">{locale.language === "en" ? "You are using the home-screen app." : "Χρησιμοποιείς την εφαρμογή από την αρχική οθόνη."}</p>
+      {:else if install.installed}
+        <p role="status">{locale.language === "en" ? "Installation completed. Open the app from your home screen." : "Η εγκατάσταση ολοκληρώθηκε. Άνοιξε την εφαρμογή από την αρχική οθόνη."}</p>
+      {/if}
+      {#if install.promptEvent && !install.standalone}
+        <button type="button" disabled={install.busy} onclick={() => install.prompt()}>{locale.language === "en" ? "Install on this device" : "Εγκατάσταση σε αυτή τη συσκευή"}</button>
+      {/if}
+      <p><strong>{locale.language === "en" ? "iPhone / iPad" : "iPhone / iPad"}</strong><br>{locale.language === "en" ? "In Safari, tap Share, then Add to Home Screen. Turn on Open as Web App if offered, and tap Add." : "Στο Safari πάτησε Κοινοποίηση και μετά Προσθήκη στην οθόνη Αφετηρίας. Αν εμφανιστεί, ενεργοποίησε το Άνοιγμα ως εφαρμογή Ιστού και πάτησε Προσθήκη."}</p>
+      <p><strong>Android</strong><br>{locale.language === "en" ? "In Chrome, open the menu (⋮), choose Install app or Add to Home screen, and follow the prompts." : "Στο Chrome άνοιξε το μενού (⋮), επίλεξε Εγκατάσταση εφαρμογής ή Προσθήκη στην αρχική οθόνη και ακολούθησε τις οδηγίες."}</p>
+      <p>{locale.language === "en" ? "Sign in to sync your language and favorite lines. Browser alerts depend on device support and permission; on iPhone, open the installed app before setting up alerts. An internet connection is needed for live data." : "Συνδέσου για συγχρονισμό γλώσσας και αγαπημένων γραμμών. Οι ειδοποιήσεις browser εξαρτώνται από τη συσκευή και την άδεια· στο iPhone άνοιξε πρώτα την εγκατεστημένη εφαρμογή. Τα ζωντανά δεδομένα χρειάζονται σύνδεση στο διαδίκτυο."}</p>
+      <button type="button" onclick={() => { installHelp = false; alertHelp = true; }}>{locale.language === "en" ? "Set up an alert" : "Ρύθμιση ειδοποίησης"}</button>
+    </section>
+  {/if}
   {#if stopsOpen}
     <div id="stop-finder">
       {#key app.stopRequest}
@@ -428,7 +466,16 @@
   .alert-guide ol { padding-left: 20px; margin: 0; }
   .alert-guide li + li { margin-top: 8px; }
   .alert-guide p { color: var(--muted); font-size: 12px; }
-  .panel-header { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .panel-header { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; margin-bottom: 12px; }
+  .menu-toggle, .menu-heading button { width: 44px; height: 44px; border: 0; border-radius: 10px; background: var(--control); color: var(--fg); cursor: pointer; font-size: 23px; }
+  .menu-drawer { position: fixed; z-index: 12; top: 0; bottom: 0; left: 0; width: min(340px, 90vw); padding: max(16px, env(safe-area-inset-top)) 16px 20px; overflow-y: auto; background: var(--bg); border-right: 1px solid var(--border); box-shadow: var(--shadow); }
+  .menu-heading { display: flex; align-items: center; justify-content: space-between; font-size: 17px; }
+  .menu-label { margin: 24px 0 8px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+  .menu-drawer .service-actions, .menu-drawer .shortcuts { display: flex; flex-direction: column; }
+  .menu-drawer .service-actions button, .menu-drawer .shortcuts a { width: 100%; justify-content: flex-start; text-align: left; font-size: 14px; padding: 10px 12px; }
+  .menu-drawer .shortcuts a { flex-direction: row; }
+  .account-control { position: fixed; z-index: 9; top: calc(12px + env(safe-area-inset-top)); right: 64px; }
+  .account-control span { display: none; }
   .panel-toggle { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-height: 44px; min-width: 44px; padding: 0; border: 0; background: none; color: var(--fg); cursor: pointer; text-align: left; }
   .panel-toggle svg { flex: none; color: var(--muted); }
   .panel-toggle svg.expanded { transform: rotate(180deg); }
@@ -466,7 +513,7 @@
 
   .panel { position: absolute; z-index: 5; top: calc(12px + env(safe-area-inset-top)); left: 12px; width: 380px;
     max-width: calc(100% - 64px); padding: 12px 14px; background: var(--panel); border: 1px solid var(--border);
-    border-radius: 14px; box-shadow: var(--shadow); backdrop-filter: blur(8px); max-height: calc(100dvh - 40px); overflow-y: auto; overflow-x: hidden; }
+    border-radius: 14px; box-shadow: var(--shadow); max-height: calc(100dvh - 40px); overflow-y: auto; overflow-x: hidden; }
   .panel.compact { width: 380px; }
   .sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   #panel-body { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
@@ -500,11 +547,11 @@
     opacity: 0; transition: opacity .12s; }
   @media (hover: hover) { .rail .tool:not(.on):hover::before { opacity: 1; transition-delay: .35s; } }
   .rail .tool:not(.on):focus-visible::before { opacity: 1; }
-  .popwrap { position: absolute; z-index: 5; top: calc(116px + env(safe-area-inset-top)); right: 66px; width: 380px; max-width: calc(100% - 64px);
+  .popwrap { position: absolute; z-index: 5; overflow: hidden; border-radius: 14px; top: calc(116px + env(safe-area-inset-top)); right: 66px; width: 380px; max-width: calc(100% - 64px);
     max-height: calc(100dvh - 128px - env(safe-area-inset-top)); display: flex; flex-direction: column; }
   .popwrap.raised { z-index: 8; }   /* the map menu over the info card */
   .pop { min-height: 0; padding: 12px 14px; font-size: 13px; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 14px; box-shadow: var(--shadow); box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; }
+    border-radius: 14px; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; }
   .pop p { margin: 0 0 8px; }
   .pop h3 { margin: 0 0 10px; font-size: 15px; }
   .pop h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
@@ -546,9 +593,10 @@
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
   [hidden] { display: none !important; }
   @media (max-width: 719px) {
+    .account-control { right: 10px; }
     .panel { max-height: 65dvh; left: 8px; right: 60px; width: auto; max-width: none; padding: 10px 12px; }
     .panel.compact { right: 60px; width: auto; max-width: none; }
-    .rail { top: calc(50px + env(safe-area-inset-top)); }   /* no zoom buttons above it */
+    .rail { top: calc(100px + env(safe-area-inset-top)); }   /* account and locate above it */
     .popwrap { top: calc(12px + env(safe-area-inset-top)); left: 8px; right: 60px; width: auto; max-width: none;
       max-height: calc(100dvh - 24px - env(safe-area-inset-top)); }
     .stats b { font-size: 16px; }

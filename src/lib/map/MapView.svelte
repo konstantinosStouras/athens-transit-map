@@ -344,6 +344,7 @@
       el.className = "me";
       el.innerHTML = '<i class="cone"></i><b></b>';
       const wrap = document.createElement("div");
+      wrap.className = "me-wrap";
       wrap.append(el);
       const marker = new Marker({ element: wrap, anchor: "center", subpixelPositioning: true }).setLngLat(f.pos).addTo(m);
       me = { marker, el, mover: new Mover(f.pos), fix: f };
