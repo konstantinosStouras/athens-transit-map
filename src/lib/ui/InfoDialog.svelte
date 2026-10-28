@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t as tr, locale } from "../i18n.svelte";
   import { dayMonth } from "../format";
+  import { overview } from "../overview";
   import { GTFS_PAGE } from "../sources";
   import SourcesView from "./SourcesView.svelte";
   import LongTermView from "./LongTermView.svelte";
@@ -28,6 +29,15 @@
   // The stats tab loads its data once, the first time it is shown; it then keeps it while hidden.
   let statsSeen = $state(false);
   $effect(() => { if (tab === "stats") statsSeen = true; });
+
+  // Match the scope used by the live overview; these are loaded measurements,
+  // not a count of every bus in service.
+  const selectedScope = $derived(app.selected.length > 0 || !app.cityOn);
+  const qualityVehicles = $derived(selectedScope ? app.vehicles.map(p => p.v) : app.city?.vehicles ?? []);
+  const quality = $derived(overview(qualityVehicles, app.serverNow / 1000));
+  const qualityConnectionFailed = $derived(app.statusFailed || (selectedScope
+    ? app.selected.some(id => app.pollState[id] === "backoff")
+    : app.cityState === "backoff"));
 
   $effect(() => {
     if (open && dlg.isConnected && !dlg.open) dlg.showModal();
@@ -80,6 +90,17 @@
           <p>{locale.language === "en" ? "Timetable version:" : "Έκδοση προγράμματος:"} <b>{app.status.gtfs_version}</b> · {locale.language === "en" ? "Valid until:" : "Ισχύει έως:"} <b>{app.status.gtfs_expires}</b></p>
           {#if app.statusFailed}<p>{locale.language === "en" ? "Last known timetable metadata; the current connection check failed." : "Τελευταία γνωστά στοιχεία προγράμματος· ο τρέχων έλεγχος σύνδεσης απέτυχε."}</p>{/if}
         {:else}<p>{locale.language === "en" ? "Timetable metadata has not loaded yet." : "Δεν έχουν φορτωθεί ακόμα τα στοιχεία προγράμματος."}</p>{/if}
+        <h4>{locale.language === "en" ? "Freshness of loaded vehicle positions" : "Πόσο πρόσφατες είναι οι θέσεις που φορτώθηκαν"}</h4>
+        <p>{selectedScope
+          ? (locale.language === "en" ? "Scope: selected lines and directions." : "Πεδίο: επιλεγμένες γραμμές και κατευθύνσεις.")
+          : (locale.language === "en" ? "Scope: vehicles loaded for the current map area, not the whole network." : "Πεδίο: οχήματα που φορτώθηκαν για την τρέχουσα περιοχή του χάρτη, όχι όλο το δίκτυο.")}</p>
+        {#if qualityConnectionFailed}<p role="status">{locale.language === "en" ? "Connection problem: these are the last received measurements." : "Πρόβλημα σύνδεσης: εμφανίζονται οι τελευταίες μετρήσεις."}</p>{/if}
+        {#if quality.total}
+          <p>{locale.language === "en" ? `${quality.fresh} of ${quality.total} positions are within 2 minutes; ${quality.stale} are older or have invalid timestamps.` : `${quality.fresh} από ${quality.total} θέσεις είναι εντός 2 λεπτών· ${quality.stale} είναι παλαιότερες ή έχουν μη έγκυρη ώρα.`}</p>
+        {:else}
+          <p>{locale.language === "en" ? "No vehicle positions are loaded in this scope yet." : "Δεν έχουν φορτωθεί ακόμη θέσεις οχημάτων σε αυτό το πεδίο."}</p>
+        {/if}
+        <p>{locale.language === "en" ? "Freshness describes the age of reported positions; it does not independently verify their accuracy or count missing vehicles." : "Η πρόσφατη ώρα αφορά την ηλικία των δηλωμένων θέσεων· δεν επαληθεύει ανεξάρτητα την ακρίβειά τους ούτε μετρά οχήματα που λείπουν."}</p>
       </section>
       <SourcesView {motion} />
     </div>
@@ -105,6 +126,7 @@
 <style>
   .data-quality { margin-bottom: 16px; padding: 12px; background: var(--control); border-radius: 10px; font-size: 13px; }
   .data-quality h3 { margin: 0; font-size: 14px; }
+  .data-quality h4 { margin: 14px 0 0; font-size: 13px; }
   .data-quality p { margin: 8px 0 0; overflow-wrap: anywhere; }
   .sheet { width: min(720px, calc(100% - 32px)); max-height: calc(100% - 48px); padding: 0; border: 1px solid var(--border);
     border-radius: 16px; background: var(--bg); color: var(--fg); box-shadow: var(--shadow); overscroll-behavior: contain; }
