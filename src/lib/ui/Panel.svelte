@@ -20,6 +20,11 @@
   let pop = $state<"layers" | "help" | "trip" | null>(null);
   // On a phone a popover covers the panel: what it covers cannot be reached by the keyboard either.
   const narrow = new MediaQuery("(max-width: 719px)");
+  let mobileCollapsed = $state((() => { try { return localStorage.getItem("oasa-mobile-panel-collapsed") === "true"; } catch { return false; } })());
+  function toggleMobilePanel() {
+    mobileCollapsed = !mobileCollapsed;
+    try { localStorage.setItem("oasa-mobile-panel-collapsed", String(mobileCollapsed)); } catch { /* blocked storage */ }
+  }
   let tripButton: HTMLButtonElement | undefined = $state();
   let layersButton: HTMLButtonElement | undefined = $state();
   let helpButton: HTMLButtonElement | undefined = $state();
@@ -108,9 +113,16 @@
 <svelte:window onclick={e => { if (pop && pop !== "trip" && !(e.target as Element).closest?.(".pop, .tool")) pop = null; }}
   onkeydowncapture={onEscape} />
 
-<section class="panel" class:compact inert={!!pop && pop !== "trip" && narrow.current} aria-label={tr("Πίνακας ελέγχου")}>
+<section class="panel" class:mobile-collapsed={narrow.current && mobileCollapsed} class:compact inert={!!pop && pop !== "trip" && narrow.current} aria-label={tr("Πίνακας ελέγχου")}>
   <header class="panel-header">
-    <span class="brand">{tr("ΟΑΣΑ · Live")}</span>
+    {#if narrow.current}
+      <button type="button" class="panel-toggle brand" onclick={toggleMobilePanel} aria-expanded={!mobileCollapsed} aria-controls="mobile-panel-content"
+        aria-label={locale.language === "en" ? (mobileCollapsed ? "Expand control panel" : "Collapse control panel") : (mobileCollapsed ? "Άνοιγμα πίνακα ελέγχου" : "Σύμπτυξη πίνακα ελέγχου")}
+        title={locale.language === "en" ? (mobileCollapsed ? "Expand control panel" : "Collapse control panel") : (mobileCollapsed ? "Άνοιγμα πίνακα ελέγχου" : "Σύμπτυξη πίνακα ελέγχου")}>
+        <span class="brand-full">{tr("ΟΑΣΑ · Live")}</span><span class="brand-short">{locale.language === "en" ? "OASA" : "ΟΑΣΑ"}</span>
+        <svg viewBox="0 0 12 8" width="12" height="8" aria-hidden="true" class:expanded={!mobileCollapsed}><path d="m1 1 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    {:else}<span class="brand">{tr("ΟΑΣΑ · Live")}</span>{/if}
     <div class="language" role="group" aria-label={locale.language === "el" ? "Γλώσσα" : "Language"}>
       <button type="button" lang="el" aria-label="Ελληνικά" aria-pressed={locale.language === "el"} onclick={() => setLanguage("el")}><img src={`${import.meta.env.BASE_URL}flags/el.svg`} alt="" width="27" height="18" /></button>
       <button type="button" lang="en" aria-label="English" aria-pressed={locale.language === "en"} onclick={() => setLanguage("en")}><img src={`${import.meta.env.BASE_URL}flags/en.svg`} alt="" width="27" height="18" /></button>
@@ -120,6 +132,7 @@
       <span>{locale.language === "en" ? (signedIn ? "Account" : "Sign in") : (signedIn ? "Λογαριασμός" : "Σύνδεση")}</span>
     </button>
   </header>
+  <div id="mobile-panel-content" hidden={narrow.current && mobileCollapsed}>
   <nav class="shortcuts" aria-label={locale.language === "en" ? "About and feedback" : "Νέα και σχόλια"}>
     <a href={`${import.meta.env.BASE_URL}updates.html?lang=${locale.language}`} title={tr("Τι νέο υπάρχει ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></svg><span>{locale.language === "en" ? "What’s new" : "Νέα"}</span></a>
     <a href={`${import.meta.env.BASE_URL}submit-feedback.html?lang=${locale.language}`} title={tr("Στείλε σχόλιο με εικόνα ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H4l-2 2V11.5a9.5 9.5 0 1 1 19 0Z"/><path d="M7 9h9M7 13h6"/></svg><span>{locale.language === "en" ? "Feedback" : "Σχόλιο"}</span></a>
@@ -163,6 +176,7 @@
     <LinePicker {app} expanded={!collapsed} searchOpen={searching} onsearch={() => (searching = true)} onclose={() => (searching = false)} {tail} />
   </div>
 
+  {#if app.selected.length || app.cityOn}
   <div class="freshness" class:stale={badge?.cls === "stale" || app.statusFailed}>
     <span class="live-dot"></span>
     {#if app.statusFailed}{tr("Πρόβλημα σύνδεσης · νέα προσπάθεια σε λίγο\r\n    ")}{:else if badge}{tr(badge.text)}
@@ -170,6 +184,7 @@
     {:else if app.city}{tr("Ενημέρωση ")}{tr(ago(app.city.updated_at, app.serverNow))}
     {:else}{tr("Σύνδεση με τα ζωντανά δεδομένα…")}{/if}
   </div>
+  {/if}
   <!-- The dropdown: the tools, then what the picked lines are doing. -->
   <div id="panel-body" hidden={collapsed}>
     <div class="tools">
@@ -279,6 +294,7 @@
       </svg>
     </button>
   {/snippet}
+  </div>
   </div>
 </section>
 
@@ -395,6 +411,14 @@
   .alert-guide li + li { margin-top: 8px; }
   .alert-guide p { color: var(--muted); font-size: 12px; }
   .panel-header { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .panel-toggle { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-height: 44px; min-width: 44px; padding: 0; border: 0; background: none; color: var(--fg); cursor: pointer; text-align: left; }
+  .panel-toggle svg { flex: none; color: var(--muted); }
+  .panel-toggle svg.expanded { transform: rotate(180deg); }
+  .panel-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+  .brand-short { display: none; }
+  .panel.mobile-collapsed .panel-header { margin-bottom: 0; }
+  #mobile-panel-content[hidden] { display: none; }
+  @media (max-width: 379px) { .brand-full { display: none; } .brand-short { display: inline; } }
   .brand { font-weight: 800; font-size: 15px; white-space: nowrap; letter-spacing: -.02em; }
   .language { display: flex; gap: 4px; }
   .language img { display: block; margin: auto; border-radius: 2px; }

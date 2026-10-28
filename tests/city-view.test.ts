@@ -20,7 +20,8 @@ let signals: Array<AbortSignal | undefined>;
 let answer: (url: string) => Promise<unknown>;
 const tilesCalls = () => calls.filter(u => u.includes("/v1/vehicles/tiles/"));
 const flush = () => new Promise(r => setTimeout(r, 0));
-const app$ = () => new AppState();
+// These tests exercise the optional city overview after the user enables it.
+const app$ = () => { const app = new AppState(); app.setCityOn(true); return app; };
 
 beforeEach(() => {
   calls = [];
@@ -188,3 +189,4 @@ describe("AppState city tiles", () => {
     });
   });
 });
+

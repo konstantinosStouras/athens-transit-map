@@ -80,7 +80,7 @@ export class AppState {
   // City layer (/v1/vehicles/tiles): the live vehicles of the map view; null before data or when the server lacks it.
   city = $state.raw<CityLive | null>(null);
   cityState = $state<PollState | null>(null);
-  cityOn = $state(stored("cityOn", true, isBool));
+  cityOn = $state(stored("cityOn", false, isBool));
   others = $state<Others>(stored("others", "hide", v => v === "normal" || v === "dim" || v === "hide"));
   showAges = $state(stored("showAges", false, isBool));
   // Off: every vehicle stays at its last GPS fix (no motion in between); its age is always shown.
@@ -88,7 +88,7 @@ export class AppState {
   // Typical bus speed per road segment (public/speed/segments.geojson, lab/segspeed).
   speedOn = $state(stored("speedOn", false, isBool));
   // Metro, ISAP and tram stations on the map (the pinned lines' tracks stay either way).
-  stationsOn = $state(stored("stationsOn", true, isBool));
+  stationsOn = $state(stored("stationsOn", false, isBool));
   // Map filters; the selected vehicle is always shown.
   only = $state.raw<Only>(stored("only", { fresh: false, onTime: false },
     v => !!v && isBool((v as Only).fresh) && isBool((v as Only).onTime)));
