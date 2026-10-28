@@ -43,8 +43,8 @@
   let menuButton: HTMLButtonElement | undefined = $state();
   let stopsOpen = $state(false);
   const trafficTiles = import.meta.env.VITE_TRAFFIC_CREDIT?.trim() ? trafficTileTemplate(import.meta.env.VITE_TRAFFIC_TILES) : null;
-  function showTram() {
-    const ids = app.metro?.lines.filter(line => line.id === "T6" || line.id === "T7").map(line => line.id) ?? [];
+  function showRail(mode: "tram" | "metro") {
+    const ids = app.metro?.lines.filter(line => mode === "tram" ? /^T\d+$/.test(line.id) : /^M\d+$/.test(line.id)).map(line => line.id) ?? [];
     if (!ids.length) return;
     app.setMetroLines([...new Set([...app.metroLines, ...ids])]);
     app.setStationsOn(true);
@@ -153,7 +153,8 @@
   <div class="service-actions" role="group" aria-label={locale.language === "en" ? "Data and alerts" : "Δεδομένα και ειδοποιήσεις"}>
     <button type="button" aria-expanded={stopsOpen} aria-controls="stop-finder" onclick={() => { app.stopRequest = null; stopsOpen = !stopsOpen; pop = null; alertHelp = false; }}>{locale.language === "en" ? "Stops near you" : "Στάσεις κοντά σου"}</button>
     {#if app.metro}
-      <button type="button" onclick={showTram}>{locale.language === "en" ? "Show tram routes on map" : "Δείξε τις γραμμές τραμ στον χάρτη"}</button>
+      <button type="button" onclick={() => showRail("metro")}>{locale.language === "en" ? "Show metro routes on map" : "Δείξε τις γραμμές μετρό στον χάρτη"}</button>
+      <button type="button" onclick={() => showRail("tram")}>{locale.language === "en" ? "Show tram routes on map" : "Δείξε τις γραμμές τραμ στον χάρτη"}</button>
     {:else}
       <button type="button" onclick={() => app.loadMetro()}>{locale.language === "en" ? "Load metro and tram map" : "Φόρτωση χάρτη μετρό και τραμ"}</button>
     {/if}
