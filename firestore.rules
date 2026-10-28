@@ -5,6 +5,7 @@ service cloud.firestore {
    function owner() { return request.auth != null && request.auth.uid == uid && request.auth.token.email_verified == true; }
    allow read: if owner();
    allow create, update: if owner()
+    && !exists(/databases/$(database)/documents/accountDeletions/$(uid))
     && request.resource.data.keys().hasAll(['language', 'favorites', 'updatedAt'])
     && request.resource.data.keys().hasOnly(['language', 'favorites', 'updatedAt'])
     && request.resource.data.language in ['el', 'en']
@@ -13,6 +14,14 @@ service cloud.firestore {
     && request.resource.data.favorites.toSet().size() == request.resource.data.favorites.size()
     && request.resource.data.updatedAt == request.time;
    allow delete: if owner();
+  }
+  // This minimal marker prevents stale sessions from recreating erased preferences.
+  match /accountDeletions/{uid} {
+   function owner() { return request.auth != null && request.auth.uid == uid && request.auth.token.email_verified == true; }
+   allow get: if owner();
+   allow create: if owner() && request.resource.data.keys().hasOnly(['deletedAt']) && request.resource.data.deletedAt == request.time;
+   // A recent sign-in can roll back a deletion whose Auth step failed.
+   allow delete: if owner() && request.auth.token.auth_time >= request.time.toMillis() / 1000 - 300;
   }
   function imageSize(images, n) { return images.size() > n ? images[n].size() : 0; }
   function imageValid(images, n) { return images.size() <= n || (images[n] is string && images[n].matches('data:image/jpeg;base64,[A-Za-z0-9+/]+=*')); }

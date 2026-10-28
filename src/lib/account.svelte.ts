@@ -1,4 +1,4 @@
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, updateProfile, signOut, reload, getIdToken, type User } from "firebase/auth";
+import { deleteUser, reauthenticateWithPopup, reauthenticateWithCredential, EmailAuthProvider, getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, updateProfile, signOut, reload, getIdToken, type User } from "firebase/auth";
 import type { Unsubscribe } from "firebase/firestore";
 import { firebaseApp } from "./firebase";
 import { guestSession, preferences, authMessage, type Preference } from "./account-policy";
@@ -43,7 +43,16 @@ export class Account {
     try{localStorage.setItem("favorites",JSON.stringify(remote.favorites))}catch{}
     this.prefReady=true;this.syncStatus="saved";
    }else if(!snapshot.exists()){
-    this.last=this.current();this.prefReady=true;this.schedule(this.last,true);
+    const {getDoc,doc,getFirestore}=this.database!;
+    void getDoc(doc(getFirestore(firebaseApp),"accountDeletions",user.uid)).then(marker=>{
+     if(revision!==this.revision)return;
+     if(marker.exists()){
+      this.prefReady=false;this.stopPrefs?.();clearTimeout(this.timer);this.revision++;this.app.favorites=[];
+      try{localStorage.removeItem("favorites")}catch{}
+      void signOut(getAuth(firebaseApp));return;
+     }
+     this.last=this.current();this.prefReady=true;this.schedule(this.last,true);
+    }).catch(()=>{if(revision===this.revision)this.syncStatus="offline"});
    }else {this.syncStatus="offline";}
   },()=>{if(revision===this.revision)this.syncStatus="offline"});
  }
@@ -89,5 +98,41 @@ export class Account {
  async checkVerification(){await this.run(async()=>{const user=getAuth(firebaseApp).currentUser;if(!user)return;await reload(user);await getIdToken(user,true);if(user.emailVerified)await this.changed(user);else this.message=this.words("Το email δεν έχει επιβεβαιωθεί ακόμη. Άνοιξε τον σύνδεσμο στο email και δοκίμασε ξανά.","Your email is not verified yet. Open the email link, then check again.");})}
  async reset(email:string){await this.run(async()=>{getAuth(firebaseApp).languageCode=locale.language;await sendPasswordResetEmail(getAuth(firebaseApp),email,{url:new URL(import.meta.env.BASE_URL,location.origin).href});this.message=this.words("Αν υπάρχει λογαριασμός, θα λάβεις οδηγίες επαναφοράς κωδικού.","If an account exists, you’ll receive password reset instructions.");})}
  async logout(){await this.run(async()=>{this.flush();await this.writeChain.catch(()=>{});this.prefReady=false;this.stopPrefs?.();this.revision++;await signOut(getAuth(firebaseApp));this.app.favorites=[];try{localStorage.setItem("favorites","[]")}catch{} })}
+ async deleteAccount(password:string){
+  let removed=false;
+  await this.run(async()=>{
+   const user=getAuth(firebaseApp).currentUser;if(!user)return;
+   if(user.providerData.some(provider=>provider.providerId==="password")){
+    if(!user.email||!password)throw {code:"auth/invalid-credential"};
+    await reauthenticateWithCredential(user,EmailAuthProvider.credential(user.email,password));
+   }else{
+    const provider=new GoogleAuthProvider();provider.setCustomParameters({login_hint:user.email??"",prompt:"select_account"});
+    await reauthenticateWithPopup(user,provider);
+   }
+   await getIdToken(user,true);
+   // Stop preference listeners/writers before deleting data so they cannot recreate it.
+   clearTimeout(this.timer);this.pending=null;this.pendingInitial=false;this.prefReady=false;this.syncStatus="offline";this.stopPrefs?.();this.revision++;
+   let timeout:ReturnType<typeof setTimeout>|undefined;
+   try {
+    await Promise.race([this.writeChain,new Promise((_,reject)=>{timeout=setTimeout(()=>reject({code:"auth/network-request-failed"}),12000)})]);
+   } finally { clearTimeout(timeout); }
+   const database=await import("firebase/firestore");
+   const reference=database.doc(database.getFirestore(firebaseApp),"users",user.uid);
+   const marker=database.doc(database.getFirestore(firebaseApp),"accountDeletions",user.uid);
+   const backup=this.current();
+   if(user.emailVerified){
+    if(!(await database.getDoc(marker)).exists())await database.setDoc(marker,{deletedAt:database.serverTimestamp()});
+    await database.deleteDoc(reference);
+   }
+   try { await deleteUser(user); } catch(error){
+    // Restore the account preferences if Auth deletion failed after the data step.
+    if(user.emailVerified){try{await database.deleteDoc(marker);await database.setDoc(reference,{...backup,updatedAt:database.serverTimestamp()});await this.changed(user)}catch{this.syncStatus="offline";}}
+    throw error;
+   }
+   this.app.favorites=[];try{localStorage.removeItem("favorites");localStorage.removeItem("oasa-language")}catch{}
+   removed=true;this.message=this.words("Ο λογαριασμός και οι αποθηκευμένες προτιμήσεις σου διαγράφηκαν.","Your account and saved preferences have been deleted.");this.open=true;
+  });
+  return removed;
+ }
  retry(){if(this.prefReady&&this.user&&this.database){this.schedule(this.current(),!this.last);return;}void this.changed(getAuth(firebaseApp).currentUser)}
 }

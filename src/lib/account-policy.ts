@@ -18,6 +18,8 @@ export function guestSession(local:StorageLike, session:StorageLike): {allowed:b
 }
 export function authMessage(code:string, en:boolean):string {
  const messages:Record<string,[string,string]>={
+  "auth/user-mismatch":["Επίλεξε τον ίδιο λογαριασμό Google με αυτόν που έχεις συνδέσει.","Choose the same Google account you are signed in with."],
+  "auth/wrong-password":["Ο κωδικός δεν είναι σωστός.","The password is incorrect."],
   "auth/invalid-credential":["Το email ή ο κωδικός δεν είναι σωστός.","The email or password is incorrect."],
   "auth/email-already-in-use":["Υπάρχει ήδη λογαριασμός με αυτό το email. Δοκίμασε σύνδεση ή επαναφορά κωδικού.","An account already uses this email. Try signing in or resetting your password."],
   "auth/weak-password":["Χρησιμοποίησε κωδικό με τουλάχιστον 10 χαρακτήρες.","Use a password with at least 10 characters."],
