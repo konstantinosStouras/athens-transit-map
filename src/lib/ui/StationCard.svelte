@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t as tr, nameOf } from "../i18n.svelte";
+  import { t as tr, nameOf, locale } from "../i18n.svelte";
   import type { AppState } from "../state.svelte";
   import MetroToggles from "./MetroToggles.svelte";
 
@@ -18,6 +18,7 @@
       <button type="button" class="close" aria-label={tr("Κλείσιμο")} onclick={() => app.selectStation(null)}>×</button>
     </header>
     <p>{tr("Άνοιξε μια γραμμή για να φαίνεται η διαδρομή της.")}</p>
+    <p>{locale.language === "en" ? "Routes and stops are static. Timetables and live arrivals are not available here." : "Οι γραμμές και οι στάσεις είναι στατικές. Ωράρια και ζωντανές αφίξεις δεν είναι διαθέσιμα εδώ."}</p>
     <MetroToggles {app} ids={station.lines} />
     <p class="hide"><button type="button" class="link" onclick={() => app.setStationsOn(false)}>{tr("Κρύψε τους σταθμούς")}</button>{tr("\r\n      Ξανά από το κουμπί με το μάτι → Μετρό.")}</p>
   </section>

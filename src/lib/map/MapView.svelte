@@ -1,6 +1,6 @@
 <script lang="ts">
   import { t as tr, locale } from "../i18n.svelte";
-  import { Map as MlMap, Marker, NavigationControl, Popup, setWorkerUrl, type ExpressionSpecification, type GeoJSONSource } from "maplibre-gl";
+  import { Map as MlMap, Marker, NavigationControl, Popup, LngLatBounds, setWorkerUrl, type ExpressionSpecification, type GeoJSONSource } from "maplibre-gl";
   import "maplibre-gl/dist/maplibre-gl.css";
   import workerUrl from "virtual:maplibre-worker";
   import { debounce, throttle } from "../debounce";
@@ -113,6 +113,15 @@
   function fitTo(ids: string[]) {
     const b = bounds(drawn.filter(d => ids.includes(d.id)));
     if (b && map) map.fitBounds(b, { padding: padding(), maxZoom: 15, duration: 600 });
+  }
+
+  function fitMetro(ids: string[]) {
+    if (!map || !app.metro) return;
+    const points = app.metro.lines.filter(line => ids.includes(line.id)).flatMap(line => line.paths.flat());
+    if (!points.length) return;
+    const b = new LngLatBounds();
+    for (const point of points) b.extend(point);
+    map.fitBounds(b, { padding: padding(), maxZoom: 15, duration: 600 });
   }
 
   // A right-pointing chevron; symbol layers turn it along each line in travel direction.
@@ -670,9 +679,11 @@
 
     map = m;
     app.fit = fitTo;
+    app.fitMetro = fitMetro;
     if (import.meta.env.DEV) Object.assign(window, { __map: m, __fleet: fleet, __doms: doms });
     return () => {
       app.fit = () => {};
+      app.fitMetro = () => {};
       disposed = true;
       cancelAnimationFrame(raf);
       reportSoon.cancel();

@@ -43,6 +43,14 @@
   let menuButton: HTMLButtonElement | undefined = $state();
   let stopsOpen = $state(false);
   const trafficTiles = import.meta.env.VITE_TRAFFIC_CREDIT?.trim() ? trafficTileTemplate(import.meta.env.VITE_TRAFFIC_TILES) : null;
+  function showTram() {
+    const ids = app.metro?.lines.filter(line => line.id === "T6" || line.id === "T7").map(line => line.id) ?? [];
+    if (!ids.length) return;
+    app.setMetroLines([...new Set([...app.metroLines, ...ids])]);
+    app.setStationsOn(true);
+    app.selectStation(null);
+    app.fitMetro(ids);
+  }
   $effect(() => {
     if (app.stopRequest) { stopsOpen = true; mobileCollapsed = false; pop = null; alertHelp = false; }
   });
@@ -144,6 +152,11 @@
   <div role="presentation" onclick={(e) => { if ((e.target as Element).closest("button")) { menuOpen = false; mobileCollapsed = false; } }}>
   <div class="service-actions" role="group" aria-label={locale.language === "en" ? "Data and alerts" : "Δεδομένα και ειδοποιήσεις"}>
     <button type="button" aria-expanded={stopsOpen} aria-controls="stop-finder" onclick={() => { app.stopRequest = null; stopsOpen = !stopsOpen; pop = null; alertHelp = false; }}>{locale.language === "en" ? "Stops near you" : "Στάσεις κοντά σου"}</button>
+    {#if app.metro}
+      <button type="button" onclick={showTram}>{locale.language === "en" ? "Show tram routes on map" : "Δείξε τις γραμμές τραμ στον χάρτη"}</button>
+    {:else}
+      <button type="button" onclick={() => app.loadMetro()}>{locale.language === "en" ? "Load metro and tram map" : "Φόρτωση χάρτη μετρό και τραμ"}</button>
+    {/if}
     <button type="button" onclick={() => { app.infoTab = "stats"; app.infoOpen = true; }}>{locale.language === "en" ? "Network statistics" : "Στατιστικά δικτύου"}</button>
     <button type="button" onclick={() => { app.infoTab = "sources"; app.infoOpen = true; }}>{locale.language === "en" ? "Data and limitations" : "Δεδομένα και περιορισμοί"}</button>
     <button type="button" aria-expanded={alertHelp} aria-controls="alert-guide" onclick={() => alertHelp = !alertHelp}><Bell />{locale.language === "en" ? " Set up an alert" : " Ρύθμιση ειδοποίησης"}</button>

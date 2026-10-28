@@ -126,6 +126,7 @@ export class AppState {
 
   // Set by MapView: frame the given lines once their shapes are loaded.
   fit: (ids: string[]) => void = () => {};
+  fitMetro: (ids: string[]) => void = () => {};
 
   private clock = new ClockOffset();
   private pollers = new Map<string, LinePoller>();
