@@ -66,7 +66,7 @@ describe("account self-deletion",()=>{
   const {account}=setup(false);expect(await account.deleteAccount("test-password")).toBe(true);expect(mock.removeDoc).not.toHaveBeenCalled();expect(mock.removeUser).toHaveBeenCalledTimes(1);
  });
  it("signs a stale session out instead of recreating preferences marked deleted",async()=>{
-  const {account,app}=setup(true);await vi.waitFor(()=>expect(mock.snapshot).toBeDefined());mock.getDoc.mockResolvedValueOnce({exists:()=>true});mock.snapshot!(snapshot(null));
+  const {account,app}=setup(true);await vi.waitFor(()=>expect(mock.snapshot).toBeDefined());mock.getDoc.mockResolvedValueOnce({exists:()=>true});mock.reload.mockRejectedValueOnce({code:"auth/user-not-found"});mock.snapshot!(snapshot(null));
   await vi.waitFor(()=>expect(mock.logout).toHaveBeenCalledTimes(1));expect(mock.write).not.toHaveBeenCalled();expect(app.favorites).toEqual([]);
  });
 });

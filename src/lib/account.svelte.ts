@@ -7,10 +7,11 @@ import type { AppState } from "./state.svelte";
 export class Account {
  user = $state.raw<User|null>(null);
  ready=$state(false); busy=$state(false); open=$state(false); error=$state(""); message=$state("");
+ deletionPending=$state(false);
  guestAllowed=$state(false); used=$state(0); syncStatus=$state<"loading"|"saved"|"saving"|"offline">("loading");
  private emailVerified=$state(false);
  verified=$derived(!!this.user&&this.emailVerified);
- allowed=$derived(this.ready && (this.user ? this.verified : this.guestAllowed));
+ allowed=$derived(this.ready && (this.user ? this.verified&&!this.deletionPending : this.guestAllowed));
  private stopAuth?:Unsubscribe; private stopPrefs?:Unsubscribe; private revision=0;
  private last:Preference|null=null; private prefReady=false; private timer?:ReturnType<typeof setTimeout>;
  private writeChain=Promise.resolve(); private resendAfter=0; private pending:Preference|null=null; private pendingInitial=false;
@@ -23,7 +24,7 @@ export class Account {
  private words(el:string,en:string){return locale.language==="en"?en:el}
  private onFocus=()=>{if(this.user&&!this.user.emailVerified&&!this.busy)void this.checkVerification()};
  private async changed(user:User|null){
-  const revision=++this.revision;this.stopPrefs?.();clearTimeout(this.timer);this.pending=null;this.last=null;this.prefReady=false;this.user=user;this.emailVerified=!!user?.emailVerified;
+  const revision=++this.revision;this.stopPrefs?.();clearTimeout(this.timer);this.pending=null;this.last=null;this.prefReady=false;this.user=user;this.deletionPending=false;this.emailVerified=!!user?.emailVerified;
   this.error="";this.message="";this.syncStatus="loading";this.ready=true;
   if(!user){let trial={allowed:false,used:2};try{trial=guestSession(localStorage,sessionStorage)}catch{}this.guestAllowed=trial.allowed;this.used=trial.used;return;}
   if(!user.emailVerified){this.open=true;return;}
@@ -49,7 +50,7 @@ export class Account {
      if(marker.exists()){
       this.prefReady=false;this.stopPrefs?.();clearTimeout(this.timer);this.revision++;this.app.favorites=[];
       try{localStorage.removeItem("favorites")}catch{}
-      void signOut(getAuth(firebaseApp));return;
+      void reload(user).then(()=>{if(revision+1===this.revision){this.deletionPending=true;this.open=true;this.syncStatus="offline";}}).catch(()=>{if(revision+1===this.revision)void signOut(getAuth(firebaseApp))});return;
      }
      this.last=this.current();this.prefReady=true;this.schedule(this.last,true);
     }).catch(()=>{if(revision===this.revision)this.syncStatus="offline"});
@@ -126,7 +127,9 @@ export class Account {
    }
    try { await deleteUser(user); } catch(error){
     // Restore the account preferences if Auth deletion failed after the data step.
-    if(user.emailVerified){try{await database.deleteDoc(marker);await database.setDoc(reference,{...backup,updatedAt:database.serverTimestamp()});await this.changed(user)}catch{this.syncStatus="offline";}}
+    const code=(error as {code?:string}).code;
+    if(user.emailVerified && code!=="auth/network-request-failed" && code!=="auth/internal-error"){try{await database.deleteDoc(marker);await database.setDoc(reference,{...backup,updatedAt:database.serverTimestamp()});await this.changed(user)}catch{this.syncStatus="offline";}}
+    else this.deletionPending=true;
     throw error;
    }
    this.app.favorites=[];try{localStorage.removeItem("favorites");localStorage.removeItem("oasa-language")}catch{}

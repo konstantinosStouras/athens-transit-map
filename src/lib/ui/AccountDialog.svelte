@@ -42,10 +42,11 @@
   {:else if account.verified}
    <p class="eyebrow">{words("Ο ΛΟΓΑΡΙΑΣΜΟΣ ΣΟΥ","YOUR ACCOUNT")}</p><h1 id="account-title">{words("Οι διαδρομές σου, παντού.","Your journeys, everywhere.")}</h1>
    <p id="account-intro" class="email">{account.user?.displayName || account.user?.email}</p><p class="verified">✓ {words("Επιβεβαιωμένο email","Email verified")}</p>
+   {#if account.deletionPending}<p class="error" role="status">{words("Ζητήθηκε διαγραφή και οι προτιμήσεις αφαιρέθηκαν. Ολοκλήρωσε τη διαγραφή ή αποσυνδέσου.","Deletion was requested and preferences were erased. Finish deleting the account or sign out.")}</p>{/if}
    <p>{words("Η γλώσσα και οι αγαπημένες γραμμές σου αποθηκεύονται στον προσωπικό σου λογαριασμό OASA Live.","Your language and favourite lines are saved to your personal OASA Live account.")}</p>
    <p role="status">{account.syncStatus==="saved"?words("✓ Οι προτιμήσεις συγχρονίστηκαν","✓ Preferences synced"):account.syncStatus==="offline"?words("Δεν έγινε συγχρονισμός. Οι αλλαγές παραμένουν σε αυτή τη συσκευή.","Sync unavailable. Changes remain on this device."):words("Συγχρονισμός…","Syncing…")}</p>
    {#if account.syncStatus==="offline"}<button class="secondary wide" onclick={()=>account.retry()}>{words("Νέα προσπάθεια συγχρονισμού","Retry sync")}</button>{/if}
-   <button class="primary wide" onclick={close}>{words("Πίσω στον χάρτη","Back to the map")}</button><button class="secondary wide" disabled={account.busy} onclick={()=>account.logout()}>{words("Αποσύνδεση","Sign out")}</button>
+   <button class="primary wide" onclick={()=>{if(account.deletionPending)deleteStep=true;else close()}}>{account.deletionPending?words("Ολοκλήρωση διαγραφής","Finish account deletion"):words("Πίσω στον χάρτη","Back to the map")}</button><button class="secondary wide" disabled={account.busy} onclick={()=>account.logout()}>{words("Αποσύνδεση","Sign out")}</button>
    <button class="link wide delete-link" disabled={account.busy} onclick={()=>{deleteStep=true;account.error="";account.message=""}}>{words("Διαγραφή λογαριασμού","Delete account")}</button>
   {:else}
    <p class="eyebrow">{words("ΟΙ ΚΑΘΗΜΕΡΙΝΕΣ ΣΟΥ ΔΙΑΔΡΟΜΕΣ","YOUR EVERYDAY JOURNEYS")}</p>
