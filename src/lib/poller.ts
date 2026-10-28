@@ -2,6 +2,7 @@
 
 import { ClockOffset, gapFloor, outcomeDelay, type Outcome } from "./schedule";
 import type { LineLive } from "./types";
+import { validLiveVehicle } from "./live-validation";
 
 export type PollState = "loading" | "ok" | "warming" | "backoff" | "unknown";
 export interface FetchResult { status: number; body: unknown; date?: number }   // date: server ms
@@ -26,7 +27,8 @@ export interface PollerOptions<T extends Paced = LineLive> {
 export function isLineLive(b: unknown): b is LineLive {
   const d = b as LineLive;
   return !!d && typeof d === "object" && typeof d.line === "string" && Number.isFinite(d.updated_at)
-    && Number.isFinite(d.next_update_at) && Array.isArray(d.vehicles);
+    && Number.isFinite(d.next_update_at) && Array.isArray(d.vehicles)
+    && d.vehicles.every(validLiveVehicle) && new Set(d.vehicles.map(v => v.id)).size === d.vehicles.length;
 }
 
 export class LinePoller<T extends Paced = LineLive> {
@@ -41,9 +43,13 @@ export class LinePoller<T extends Paced = LineLive> {
   private lastStart = -Infinity;
   private baseDeadline = -Infinity;
   private errors = 0;
+  private latestUpdate = -Infinity;
+  private readonly fixedLineFeed: boolean;
 
   constructor(opts: PollerOptions<T>) {
     this.line = opts.line;
+    // Custom feeds (such as changing map tiles) can legitimately switch scope.
+    this.fixedLineFeed = opts.validate === undefined;
     this.o = {
       clock: new ClockOffset(),
       wall: () => Date.now(),
@@ -51,7 +57,7 @@ export class LinePoller<T extends Paced = LineLive> {
       rand: Math.random,
       isHidden: () => typeof document !== "undefined" && document.visibilityState === "hidden",
       timeoutMs: 15_000,
-      validate: isLineLive as unknown as (b: unknown) => b is T,
+      validate: ((b: unknown): b is LineLive => isLineLive(b) && b.line === opts.line) as unknown as (b: unknown) => b is T,
       ...opts,
     };
   }
@@ -116,7 +122,8 @@ export class LinePoller<T extends Paced = LineLive> {
   }
 
   private handle({ status, body, date }: FetchResult): Outcome | null {
-    if (status === 200 && this.o.validate(body)) {
+    if (status === 200 && this.o.validate(body) && (!this.fixedLineFeed || body.updated_at >= this.latestUpdate)) {
+      this.latestUpdate = body.updated_at;
       this.errors = 0;
       this.o.clock.observe(body.next_update_at, body.updated_at, this.o.wall(), this.o.mono(), date);
       this.o.onData(body);

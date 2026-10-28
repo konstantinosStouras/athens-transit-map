@@ -40,6 +40,50 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(T0); });
 afterEach(() => { vi.useRealTimers(); });
 
 describe("LinePoller", () => {
+  it("allows a custom map feed to move to an area with an older snapshot", async () => {
+    const seen: number[] = [];
+    let calls = 0;
+    const p = new LinePoller({ line: "city", validate: isCityLive,
+      fetchLine: async () => ({ status: 200, body: {
+        updated_at: T0 / 1000 - calls++ * 30, next_update_at: Date.now() / 1000 + 30, vehicles: [] } }),
+      onData: d => seen.push(d.updated_at), onState: () => {}, rand: () => 0,
+      wall: () => Date.now(), mono: () => Date.now(), isHidden: () => false });
+    p.start();
+    await vi.advanceTimersByTimeAsync(31_000);
+    expect(seen).toEqual([T0 / 1000, T0 / 1000 - 30]);
+    p.stop();
+  });
+
+  it("keeps the last good snapshot through corrupt and wrong-line responses, then recovers", async () => {
+    const good = body(30);
+    const replies = [good, { ...good, vehicles: [null] }, { ...good, line: "550" }, body(30, T0 + 61000)];
+    const t = setup(n => ({ status: 200, body: replies[n - 1] ?? body(30) }));
+    t.poller.start();
+    await vi.advanceTimersByTimeAsync(60_999);
+    expect(t.data).toEqual([good]);
+    expect(t.states).toEqual(["ok", "backoff", "backoff"]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(t.data).toHaveLength(2);
+    expect(t.states.at(-1)).toBe("ok");
+    expect(t.starts).toEqual([T0, T0 + 31_000, T0 + 41_000, T0 + 61_000]);
+    t.poller.stop();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not replace newer line data with an older cached response after restart", async () => {
+    const good = body(30);
+    const t = setup(n => ({ status: 200, body: n === 2 ? body(30, T0 - 30_000) : good }));
+    t.poller.start();
+    await vi.advanceTimersByTimeAsync(0);
+    t.poller.stop(); t.poller.start();
+    await vi.advanceTimersByTimeAsync(31_000);
+    expect(t.data).toEqual([good]);
+    expect(t.states.at(-1)).toBe("backoff");
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(t.data).toHaveLength(2);
+    t.poller.stop();
+  });
+
   it("fetches at once, then at next_update_at + jitter", async () => {
     const t = setup(() => ({ status: 200, body: body(30) }));
     t.poller.start();
