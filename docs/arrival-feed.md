@@ -2,6 +2,8 @@
 
 The stop finder can display predicted arrivals from a separately supplied live feed. No feed is configured by default; without one, the existing stop counts remain unchanged. This is infrastructure, not a claim that real-time arrival predictions currently exist.
 
+The stop finder also links to OASA's official stop-arrival board when the physical stop can be matched safely. This is an external link, not an activated feed. See [the OASA investigation](oasa-arrivals-investigation.md) for verified endpoint behavior, the outstanding reuse permission and the backend work needed before in-app predictions can be enabled.
+
 Set `VITE_ARRIVALS_URL` to an HTTPS endpoint at build time. For GitHub Pages deployments, set the repository Actions variable `VITE_ARRIVALS_URL` and run the deploy workflow. This URL is public in the built website; do not put credentials in it. The browser sends GET requests with `stop_index` and `gtfs_version` query parameters every 30 seconds while a stop is open and the page is visible. The endpoint must allow the website's origin through CORS. Avoid logging or retaining stop queries unnecessarily.
 
 The stop index is the zero-based index in `public/trips.json`'s `s` array. It is only valid for the exact `v` in that file. A provider must map its own stable stop identifiers to this index for each published version; never reuse mappings after an index rebuild. Line and variant identifiers must match the corresponding keys in `trips.json`.

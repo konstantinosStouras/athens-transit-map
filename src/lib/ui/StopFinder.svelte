@@ -7,6 +7,7 @@
   import { ago, gtfsEnded } from "../format";
   import type { AppState } from "../state.svelte";
   import VehicleType from "./VehicleType.svelte";
+  import OfficialArrivalsLink from "./OfficialArrivalsLink.svelte";
   import { arrivalsFor, parseArrivals, type ArrivalFeed } from "../arrivals";
   let { app, seed = null, onclose }: { app: AppState; seed?: { name: string; lat: number; lon: number } | null; onclose: () => void } = $props();
   const en = $derived(locale.language === "en");
@@ -129,6 +130,7 @@
     {#if selected}
       <section class="selected" aria-labelledby="selected-stop-title">
         <h3 id="selected-stop-title" tabindex="-1">{nameOf(selected)}</h3>
+        <OfficialArrivalsLink stop={selected} {version} />
         <p class="note">{en ? "Same-name stops can be on opposite sides of the road. Check the direction below." : "Στάσεις με ίδιο όνομα μπορεί να είναι απέναντι. Έλεγξε την κατεύθυνση παρακάτω."}</p>
         <p class="note">{en ? "Follow a direction to load its vehicles. Counts use fresh GPS and the reported next stop; they are not arrival times. No countdown does not mean no service." : "Ακολούθησε μια κατεύθυνση για να φορτωθούν τα οχήματά της. Τα πλήθη βασίζονται σε πρόσφατο GPS και τη δηλωμένη επόμενη στάση, όχι σε χρόνο άφιξης. Η απουσία ένδειξης δεν σημαίνει ότι δεν υπάρχει δρομολόγιο."}</p>
         {#if app.statusFailed}<p class="warning">{en ? "Connection problem. Live stop counts are unavailable." : "Πρόβλημα σύνδεσης. Τα ζωντανά πλήθη στάσεων δεν είναι διαθέσιμα."}</p>{/if}
