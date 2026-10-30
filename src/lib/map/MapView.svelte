@@ -114,13 +114,28 @@
       : { top: panel.bottom + 16, bottom: 24, left: 24, right: 24 };
   }
 
-  function fitTo(ids: string[]) {
-    const b = bounds(drawn.filter(d => ids.includes(d.id)));
-    if (b && map) map.fitBounds(b, { padding: padding(), maxZoom: 15, duration: 600 });
+  function stopFollowing() {
+    follow = false;
+    flyOnFix = false;
+  }
+
+  // Include every displayed bus and rail route in the results view.
+  function fitTo(_ids: string[] = []) {
+    if (!map) return;
+    const bus = bounds(drawn);
+    const frame = new LngLatBounds();
+    if (bus) { frame.extend(bus[0]); frame.extend(bus[1]); }
+    for (const line of app.metro?.lines ?? []) {
+      if (app.metroLines.includes(line.id)) for (const path of line.paths) for (const point of path) frame.extend(point);
+    }
+    if (frame.isEmpty()) return;
+    stopFollowing();
+    map.fitBounds(frame, { padding: padding(), maxZoom: 15, duration: 600 });
   }
 
   function fitPoints(points: [number, number][]) {
     if (!map || !points.length) return;
+    stopFollowing();
     const b = new LngLatBounds();
     for (const [lat, lon] of points) b.extend([lon, lat]);
     const frame = padding();
@@ -128,14 +143,7 @@
     map.fitBounds(b, { padding: walkPadding, maxZoom: 17, duration: 600 });
   }
 
-  function fitMetro(ids: string[]) {
-    if (!map || !app.metro) return;
-    const points = app.metro.lines.filter(line => ids.includes(line.id)).flatMap(line => line.paths.flat());
-    if (!points.length) return;
-    const b = new LngLatBounds();
-    for (const point of points) b.extend(point);
-    map.fitBounds(b, { padding: padding(), maxZoom: 15, duration: 600 });
-  }
+  function fitMetro(_ids: string[]) { fitTo(); }
 
   // A right-pointing chevron; symbol layers turn it along each line in travel direction.
   function arrowImage(): ImageData {
@@ -362,13 +370,12 @@
       locState = s;
       if (s === "denied") {
         follow = false;
-        store("locOn", false);
+        flyOnFix = false;
         app.notify("Ο browser δεν επιτρέπει πρόσβαση στην τοποθεσία. Άλλαξέ το από τις ρυθμίσεις του.");
       } else if (s === "unavailable") app.notify("Δεν βρέθηκε η τοποθεσία σου. Νέα προσπάθεια σε λίγο.");
     },
     onFix: (f, speed) => onMyFix(f, speed),
   });
-  function store(k: string, v: unknown) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } }
 
   function onMyFix(f: Fix, speed: number | null) {
     const m = map;
@@ -394,7 +401,7 @@
     showAcc(m, f);
     if (flyOnFix) {
       flyOnFix = false;
-      m.flyTo({ center: f.pos, zoom: Math.max(m.getZoom(), 15.5), duration: 1200 });
+      m.flyTo({ center: f.pos, zoom: Math.max(m.getZoom(), 17), duration: 1200, padding: padding() });
     }
   }
 
@@ -404,22 +411,14 @@
     (map?.getSource("me-acc") as GeoJSONSource | undefined)?.setData(EMPTY);
   }
 
-  // The locate button: off → find me and follow; following → off; not following → follow again.
+  // Stop camera following without removing or stopping the location dot.
   function locateClick() {
-    if (locState === "off" || locState === "denied") {
-      follow = true;
-      flyOnFix = true;
-      store("locOn", true);
-      locator.start();
-    } else if (!follow && me) {
-      follow = true;
-      map?.easeTo({ center: me.mover.pos, zoom: Math.max(map.getZoom(), 15), duration: 600 });
-    } else {
-      follow = false;
-      store("locOn", false);
-      locator.stop();
-      dropMe();
-    }
+    if (!navigator.geolocation) return;
+    if (follow) { stopFollowing(); return; }
+    follow = true;
+    flyOnFix = !me;
+    if (me) map?.easeTo({ center: me.mover.pos, zoom: Math.max(map.getZoom(), 17), padding: padding(), duration: 600 });
+    locator.start();
   }
 
   // One frame loop for every moving dot. It runs as often as needed for steps of under half a
@@ -616,7 +615,7 @@
       credit.setAttribute("aria-haspopup", "dialog");
       credit.addEventListener("click", e => { e.preventDefault(); e.stopImmediatePropagation(); void openInfo(); }, true);
     }
-    m.on("dragstart", () => (follow = false));   // only user gestures fire it
+    m.on("dragstart", stopFollowing);   // only user gestures fire it
     // The city layer loads the tiles of the view: at first, and 300 ms after the map stops moving (never during a move).
     const reportView = () => { const b = m.getBounds(); app.setCityView({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() }, m.getZoom()); };
     const reportSoon = debounce(reportView, VIEW_SETTLE_MS);
@@ -644,14 +643,6 @@
       me?.mover.snap();
     };
     document.addEventListener("visibilitychange", onVisible);
-    // Turned on last time and still allowed: start again (no fly-to; the map stays where it opens).
-    let disposed = false;
-    try {
-      if (JSON.parse(localStorage.getItem("locOn") ?? "false"))
-        navigator.permissions?.query({ name: "geolocation" }).then(r => {
-          if (r.state === "granted" && !disposed) locator.start();
-        }, () => {});
-    } catch { /* storage blocked */ }
     // One dispatcher: DOM marker (its own handler) → station right under the finger (drawn over the city
     // vehicles, under a picked line's stops) → city vehicle → stop → station near the finger → route → empty map.
     m.on("click", e => {
@@ -700,6 +691,11 @@
     }
 
     map = m;
+    if (navigator.geolocation) {
+      follow = true;
+      flyOnFix = true;
+      locator.start();
+    }
     app.fit = fitTo;
     app.fitPoints = fitPoints;
     app.fitMetro = fitMetro;
@@ -708,7 +704,6 @@
       app.fit = () => {};
       app.fitPoints = () => {};
       app.fitMetro = () => {};
-      disposed = true;
       cancelAnimationFrame(raf);
       reportSoon.cancel();
       reportFollow.cancel();
@@ -778,6 +773,15 @@
     if (m && started && d !== styleDark) restyle(m, d);
   });
 
+  // Geometry changes reframe results; live GPS and vehicle updates do not.
+  $effect(() => {
+    const ready = loaded;
+    void drawn;
+    void app.metro;
+    void app.metroLines;
+    if (ready) untrack(() => fitTo());
+  });
+
   $effect(() => {
     if (loaded) (map!.getSource("routes") as GeoJSONSource).setData(routesFC(drawn));
   });
@@ -821,6 +825,18 @@
   $effect(() => {
     if (!loaded) return;
     (map!.getSource("rail-live") as GeoJSONSource).setData(railVehicleFC(railFeed, app.metroLines, app.now / 1000));
+  });
+
+  // A train selected in the transport explorer, with its source visible on the marker.
+  $effect(() => {
+    const position = app.railPosition, m = map;
+    if (!position || !m) return;
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "train-position";
+    el.textContent = position.label;
+    const marker = new Marker({ element: el, anchor: "bottom" }).setLngLat([position.point[1], position.point[0]]).addTo(m);
+    return () => marker.remove();
   });
 
   // The trip planner's start (A) and end (B).
@@ -963,10 +979,10 @@
   $effect(() => {
     const s = locState, f = follow;
     locateBtn.dataset.state = s === "on" && f ? "follow" : s;
-    const label = s === "off" || s === "denied" ? "Η θέση μου" : f ? "Σταμάτα να δείχνεις τη θέση μου" : "Ακολούθησε τη θέση μου";
+    const label = s === "off" || s === "denied" ? "Η θέση μου" : f ? "Σταμάτα να ακολουθείς τη θέση μου" : "Ακολούθησε τη θέση μου";
     locateBtn.title = tr(label);
     locateBtn.setAttribute("aria-label", tr(label));
-    locateBtn.setAttribute("aria-pressed", String(s !== "off" && s !== "denied"));
+    locateBtn.setAttribute("aria-pressed", String(f));
   });
 
   // Map controls are owned by MapLibre; relabel them without recreating the map.
@@ -1009,6 +1025,7 @@
 {/if}
 
 <style>
+  :global(.train-position) { max-width: 230px; padding: 8px; border: 2px solid #fff; border-radius: 10px; background: #0876d8; color: #fff; font: 600 12px/1.4 sans-serif; box-shadow: 0 2px 6px #0005; }
   .map { position: absolute; inset: 0; }
   .walking-credit { position: absolute; bottom: 36px; right: 12px; max-width: min(320px, calc(100vw - 24px)); z-index: 3; padding: 6px 8px; border-radius: 6px; background: var(--panel); color: var(--fg); font: 400 12px/1.4 sans-serif; }
   .traffic-credit { position: absolute; left: 12px; bottom: 12px; z-index: 3; padding: 4px 8px; border-radius: 6px; background: var(--panel); color: var(--fg); font-size: 11px; }

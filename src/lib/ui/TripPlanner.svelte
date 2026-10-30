@@ -94,6 +94,7 @@
     stopSearch();
     locGen[f]++;
     if (locating === f) locating = null;
+    memo.applied = "";
     ends = { ...ends, [f]: { text, place: null } };
     openField = f;
     activeKey = null;
@@ -209,7 +210,7 @@
   function focusWalk() {
     const leg = app.walking.find(w => w.kind === "board");
     if (!leg) return;
-    if (phone()) folded = true;
+    folded = false;
     void tick().then(() => app.fitPoints(leg.route ? leg.route.geometry.coordinates.map(p => [p[1], p[0]]) : [leg.from, leg.to]));
   }
   function solo(t: TripLine) {
@@ -241,7 +242,7 @@
   }
 
   // Once per trip: reopening the planner must not undo picks changed since. On a phone, each new trip
-  // folds the planner so the map shows. With no line without a change, the best change is shown.
+  // keeps the endpoints editable. With no direct line, the best change is shown.
   $effect(() => {
     if (!trips || !from || !to) return;
     const key = JSON.stringify([from.pts, to.pts, radius]);
@@ -254,10 +255,28 @@
       else if (xfers.length) pickXfer(xfers[0]);
     });
     if ((trips.length || xfers.length) && phone()) {
-      folded = true;
+      folded = false;
       (document.activeElement as HTMLElement | null)?.blur?.();
     }
   });
+
+  function reset() {
+    stopSearch();
+    locGen.from++; locGen.to++;
+    locating = null;
+    err = null;
+    geo = null;
+    ends = { from: { text: "", place: null }, to: { text: "", place: null } };
+    memo.applied = "";
+    picked = null;
+    folded = false;
+    alertOpen = false;
+    app.setAlert(null);
+    for (const id of [...app.selected]) app.toggleLine(id);
+    app.tripEnds = null;
+    app.tripStops = []; app.walking = [];
+    void tick().then(() => inputs.from?.focus());
+  }
 
   function close() {
     stopSearch();
@@ -358,13 +377,6 @@
   const going = (t: TripLine) => (data ? termini(data.ix, t.line, t.variants.map(v => v.id), locale.language).join(" · ") : "");
   const goingNow = (line: string, variants: string[] = []) => (data ? termini(data.ix, line, app.focus[line] ?? variants, locale.language).join(" · ") : "");
 
-  // New results, or the planner opened again: bring the list into view (not while a suggestion list is open).
-  let resultsEl: HTMLElement | undefined = $state();
-  $effect(() => {
-    if (!trips?.length || folded || openField) return;
-    void tick().then(() => resultsEl?.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }));
-  });
-
   function onkeydown(f: Field, e: KeyboardEvent) {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
@@ -387,6 +399,11 @@
 
 <div class="trip" role="dialog" tabindex="-1" aria-labelledby="trip-h"
   onkeydown={e => { if (e.key === "Escape" && !openField) { e.stopPropagation(); close(); } }}>
+  <nav class="journey-actions" aria-label={locale.language === "en" ? "Journey controls" : "Έλεγχος διαδρομής"}>
+    <button type="button" onclick={close}>{locale.language === "en" ? "← Back to main screen" : "← Επιστροφή στην αρχική"}</button>
+    <button type="button" onclick={reset}>{locale.language === "en" ? "Start again" : "Νέα αναζήτηση"}</button>
+    <button type="button" onclick={() => { folded = false; void tick().then(() => inputs.from?.focus()); }}>{locale.language === "en" ? "Edit from / to" : "Αλλαγή από / προς"}</button>
+  </nav>
   {#if folded && from && to && trips}
     <span id="trip-h" class="sr">{tr("Διαδρομή")}</span>
     <div class="row">
@@ -428,6 +445,7 @@
             role="combobox" aria-expanded={openField === f} aria-controls="trip-{f}-list" aria-autocomplete="list"
             aria-activedescendant={openField === f && opts[active] ? `trip-${f}-${active}` : undefined}
             onfocus={() => { openField = f; }} oninput={ev => edit(f, ev.currentTarget.value)} onkeydown={ev => onkeydown(f, ev)} />
+          {#if e.text}<button type="button" class="icon" aria-label={locale.language === "en" ? (f === "from" ? "Clear starting point" : "Clear destination") : (f === "from" ? "Διαγραφή αφετηρίας" : "Διαγραφή προορισμού")} onclick={() => { edit(f, ""); inputs[f]?.focus(); }}>×</button>{/if}
         </div>
       {/each}
       <button type="button" class="swap" aria-label={tr("Αντιστροφή αφετηρίας και προορισμού")} title={tr("Αντιστροφή")} onclick={swap}>⇅</button>
@@ -468,7 +486,7 @@
       <p class="note">{locale.language === "en" ? "Choose a journey below to show its lines and stops. Calculate the walking route separately, or open Google Maps." : "Διάλεξε διαδρομή παρακάτω για γραμμές και στάσεις. Υπολόγισε χωριστά τη διαδρομή πεζή ή άνοιξε το Google Maps."}</p>
       {#if picked && app.walking[0]}<div class="walk-summary" role="status"><strong>{locale.language === "en" ? "Shown on map: " : "Στον χάρτη: "}{picked.replace(">", " → ")}</strong><WalkingDetails {app} /><button type="button" onclick={focusWalk}>{locale.language === "en" ? "Show boarding stop on map" : "Δείξε τη στάση επιβίβασης στον χάρτη"}</button><a href={walkUrl(app.walking[0].to, app.walking[0].from)} target="_blank" rel="noopener noreferrer">{locale.language === "en" ? "Walking directions in Google Maps ↗" : "Οδηγίες πεζή στο Google Maps ↗"}</a></div>{/if}
       {#if !trips.length}<p class="note">{tr("Καμία γραμμή λεωφορείου δεν πάει χωρίς αλλαγή.")}</p>{/if}
-      <ol class="results" bind:this={resultsEl}>
+      <ol class="results">
         {#each trips as t, k (t.line)}
           {@const info = app.lineInfo.get(t.line)}
           {@const v = t.variants[0]}
@@ -591,8 +609,11 @@
 </div>
 
 <style>
+  .journey-actions { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0; background: var(--panel); }
+  .journey-actions button { min-height: 44px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--control); color: var(--fg); cursor: pointer; }
+
   .trip { min-height: 0; padding: 4px 0 0; font-size: 13px;
-    background: transparent; border: 0; border-radius: 0; box-shadow: none; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; }
+    background: transparent; border: 0; border-radius: 0; box-shadow: none; box-sizing: border-box; overflow: visible; }
   .sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .row { display: flex; align-items: center; gap: 4px; }
   h3 { flex: 1; margin: 0; font-size: 15px; }

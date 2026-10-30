@@ -11,6 +11,7 @@
   import HelpPop from "./HelpPop.svelte";
   import LinePicker from "./LinePicker.svelte";
   import MetroToggles from "./MetroToggles.svelte";
+  import RailExplorer from "./RailExplorer.svelte";
   import StatusBanner from "./StatusBanner.svelte";
   import VehicleType from "./VehicleType.svelte";
   import { trafficTileTemplate } from "../traffic";
@@ -44,10 +45,19 @@
   let menuButton: HTMLButtonElement | undefined = $state();
   $effect(() => { if (menuOpen) void tick().then(() => document.querySelector<HTMLButtonElement>(".menu-heading button")?.focus()); });
   let stopsOpen = $state(false);
+  let suburbanOpen = $state(false);
   const trafficTiles = import.meta.env.VITE_TRAFFIC_CREDIT?.trim() ? trafficTileTemplate(import.meta.env.VITE_TRAFFIC_TILES) : null;
+  function railShown(mode: "tram" | "metro") {
+    const ids = app.metro?.lines.filter(line => mode === "tram" ? /^T\d+$/.test(line.id) : /^M\d+$/.test(line.id)).map(line => line.id) ?? [];
+    return ids.length > 0 && ids.every(id => app.metroLines.includes(id));
+  }
   function showRail(mode: "tram" | "metro") {
     const ids = app.metro?.lines.filter(line => mode === "tram" ? /^T\d+$/.test(line.id) : /^M\d+$/.test(line.id)).map(line => line.id) ?? [];
     if (!ids.length) return;
+    if (railShown(mode)) {
+      app.setMetroLines(app.metroLines.filter(id => !ids.includes(id)));
+      return;
+    }
     app.setMetroLines([...new Set([...app.metroLines, ...ids])]);
     app.setStationsOn(true);
     app.selectStation(null);
@@ -157,9 +167,10 @@
   <div role="presentation" onclick={(e) => { if ((e.target as Element).closest("button")) { menuOpen = false; mobileCollapsed = false; } }}>
   <div class="service-actions" role="group" aria-label={locale.language === "en" ? "Data and alerts" : "Δεδομένα και ειδοποιήσεις"}>
     <button type="button" aria-expanded={stopsOpen} aria-controls="stop-finder" onclick={() => { app.stopRequest = null; stopsOpen = !stopsOpen; pop = null; alertHelp = false; }}>{locale.language === "en" ? "Stops near you" : "Στάσεις κοντά σου"}</button>
+    <button type="button" aria-expanded={suburbanOpen} aria-controls="suburban-board" onclick={() => { suburbanOpen = !suburbanOpen; app.loadMetro(); pop = null; }}>{locale.language === "en" ? "ISAP, metro, tram & suburban departures" : "Αναχωρήσεις ΗΣΑΠ, μετρό, τραμ & προαστιακού"}</button>
     {#if app.metro}
-      <button type="button" onclick={() => showRail("metro")}>{locale.language === "en" ? "Show metro routes on map" : "Δείξε τις γραμμές μετρό στον χάρτη"}</button>
-      <button type="button" onclick={() => showRail("tram")}>{locale.language === "en" ? "Show tram routes on map" : "Δείξε τις γραμμές τραμ στον χάρτη"}</button>
+      <button type="button" aria-pressed={railShown("metro")} onclick={() => showRail("metro")}>{locale.language === "en" ? (railShown("metro") ? "Hide metro routes from map" : "Show metro routes on map") : (railShown("metro") ? "Απόκρυψη γραμμών μετρό" : "Δείξε τις γραμμές μετρό στον χάρτη")}</button>
+      <button type="button" aria-pressed={railShown("tram")} onclick={() => showRail("tram")}>{locale.language === "en" ? (railShown("tram") ? "Hide tram routes from map" : "Show tram routes on map") : (railShown("tram") ? "Απόκρυψη γραμμών τραμ" : "Δείξε τις γραμμές τραμ στον χάρτη")}</button>
     {:else}
       <button type="button" onclick={() => app.loadMetro()}>{locale.language === "en" ? "Load metro and tram map" : "Φόρτωση χάρτη μετρό και τραμ"}</button>
     {/if}
@@ -229,6 +240,7 @@
       {/key}
     </div>
   {/if}
+  {#if suburbanOpen}<div id="suburban-board"><button type="button" onclick={() => suburbanOpen = false}>{locale.language === "en" ? "Close rail departures" : "Κλείσιμο αναχωρήσεων"}</button><RailExplorer {app} /></div>{/if}
   {#if alertHelp}
     <section id="alert-guide" class="alert-guide" aria-label={locale.language === "en" ? "Notification setup" : "Οδηγίες ειδοποιήσεων"}>
       <ol>
@@ -449,6 +461,7 @@
         {/if}
         <section>
           <h4>{tr("Μετρό, ΗΣΑΠ και τραμ")}</h4>
+          <p class="hint">{locale.language === "en" ? "Tap a station for STASY timetable departures. Suburban departure boards are in the Explore menu." : "Πάτησε σταθμό για αναχωρήσεις από το πρόγραμμα ΣΤΑΣΥ. Οι πίνακες προαστιακού είναι στο μενού Εξερεύνηση."}</p>
           {#if import.meta.env.VITE_RAIL_REALTIME_URL?.trim()}
             <p class="hint">{locale.language === "en" ? "Blue numbered circles are recent live rail positions when the configured feed is available. Tracks and stations are static." : "Οι μπλε αριθμημένοι κύκλοι δείχνουν πρόσφατες ζωντανές θέσεις συρμών όταν η συνδεδεμένη πηγή είναι διαθέσιμη. Οι γραμμές και οι σταθμοί είναι στατικοί."}</p>
           {/if}
@@ -488,6 +501,7 @@
 <style>
   .service-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
   .service-actions button, .alert-guide button { min-height: 44px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 9px; background: var(--control); color: var(--fg); cursor: pointer; font-size: 12px; }
+  .service-actions button[aria-pressed="true"], .service-actions button[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
   .service-actions button:hover, .alert-guide button:hover { background: var(--control-hover); }
   .service-actions button:focus-visible, .alert-guide button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .alert-guide { padding: 12px; margin-bottom: 12px; background: var(--control); border-radius: 10px; font-size: 13px; }

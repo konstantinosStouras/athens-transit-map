@@ -48,7 +48,7 @@ export function stopsFC(line: DrawnLine | undefined, variant: string | null | un
 // [[west, south], [east, north]] of the given lines' shapes, or null.
 export function bounds(lines: DrawnLine[]): [[number, number], [number, number]] | null {
   let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
-  for (const l of lines) for (const v of Object.values(l.data.variants)) for (const [lat, lon] of v.shape) {
+  for (const l of lines) for (const [id, v] of Object.entries(l.data.variants)) for (const [lat, lon] of (l.visible && !l.visible.has(id) ? [] : v.shape)) {
     w = Math.min(w, lon); e = Math.max(e, lon); s = Math.min(s, lat); n = Math.max(n, lat);
   }
   return Number.isFinite(w) ? [[w, s], [e, n]] : null;

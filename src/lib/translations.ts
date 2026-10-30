@@ -272,7 +272,7 @@ export const english: Record<string, string> = {
   "Σταθμοί στον χάρτη": "Stations on the map",
   "Σταθμός": "Station",
   "Σταθμός μετρό, ΗΣΑΠ ή τραμ. Πάτα τον για τις γραμμές του.": "Metro or tram station. Tap to see its lines.",
-  "Σταμάτα να δείχνεις τη θέση μου": "Stop showing my location",
+  "Σταμάτα να ακολουθείς τη θέση μου": "Stop following my location",
   "Σταμάτα την ειδοποίηση": "Stop alert",
   "Στατιστικά": "Statistics",
   "Στατιστικά & υπόμνημα χάρτη": "Statistics & map legend",
