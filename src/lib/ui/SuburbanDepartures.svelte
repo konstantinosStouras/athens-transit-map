@@ -1,8 +1,10 @@
 <script lang="ts">
   import { locale } from "../i18n.svelte";
   import { parseStations, railJSON, railStationsUrl, type RailStation } from "../rail-departures";
+  import type { AppState } from "../state.svelte";
+  let { app }: { app: AppState } = $props();
   import RailDepartures from "./RailDepartures.svelte";
-  let stations = $state<RailStation[]>([]), selected = $state(""), failed = $state(false), attempt = $state(0);
+  let stations = $state<RailStation[]>([]), failed = $state(false), attempt = $state(0);
   const en = $derived(locale.language === "en");
   $effect(() => {
     void attempt;
@@ -23,9 +25,9 @@
   {:else if !stations.length}<p>{en ? "Loading stations…" : "Φόρτωση σταθμών…"}</p>
   {:else}
     <label>{en ? "Station" : "Σταθμός"}
-      <select bind:value={selected}><option value="">{en ? "Choose a station" : "Διάλεξε σταθμό"}</option>{#each stations as s}<option value={s.id}>{s.name}</option>{/each}</select>
+      <select bind:value={app.railChoices.suburbanStation}><option value="">{en ? "Choose a station" : "Διάλεξε σταθμό"}</option>{#each stations as s}<option value={s.id}>{s.name}</option>{/each}</select>
     </label>
-    {#if selected}<RailDepartures stop={selected} suburban />{/if}
+    {#if app.railChoices.suburbanStation}<RailDepartures stop={app.railChoices.suburbanStation} suburban />{/if}
   {/if}
 </section>
 <style>
