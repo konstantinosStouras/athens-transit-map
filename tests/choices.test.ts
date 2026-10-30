@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CHOICES_KEY, clearSavedChoices, emptyChoices, parseChoices, readChoices, resolveChoices, saveChoices } from "../src/lib/choices";
+import { decodeChoices, encodeChoices, MAX_CLOUD_CHOICES, CHOICES_KEY, clearSavedChoices, emptyChoices, parseChoices, readChoices, resolveChoices, saveChoices } from "../src/lib/choices";
 afterEach(() => vi.unstubAllGlobals());
 function storage() {
   const values = new Map<string, string>();
@@ -56,4 +56,16 @@ describe("remembered choices", () => {
     expect(saveChoices(emptyChoices())).toBe(false);
     expect(() => clearSavedChoices()).not.toThrow();
   });
+});
+
+it("encodes nested journey coordinates and rail layers for cloud storage",()=>{
+ const c=emptyChoices();c.metroLines=["M1","T7"];c.stationsOn=true;
+ c.journey.to={text:"Destination",place:{label:"Destination",pts:[[37.98,23.73],[37.99,23.74]],lines:[]}};
+ expect(decodeChoices(encodeChoices(c))).toEqual(c);
+ expect(decodeChoices("{" )).toBeNull();expect(decodeChoices(JSON.stringify({version:2}))).toBeNull();expect(decodeChoices("x".repeat(MAX_CLOUD_CHOICES+1))).toBeNull();
+});
+it("migrates the existing separately saved rail selections",()=>{
+ const values=storage();values.set("metroLines",JSON.stringify(["M3"]));values.set("stationsOn","true");
+ expect(readChoices()).toMatchObject({metroLines:["M3"],stationsOn:true});
+ saveChoices(emptyChoices());expect(readChoices()).toEqual(emptyChoices());
 });

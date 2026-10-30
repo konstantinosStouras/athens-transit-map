@@ -1,4 +1,4 @@
-import { readChoices, resolveChoices, saveChoices, clearSavedChoices, emptyChoices, emptyJourney } from "./choices";
+import { readChoices, resolveChoices, saveChoices, clearSavedChoices, emptyChoices, emptyJourney, parseChoices, type Choices } from "./choices";
 // The one store: chosen lines, live/static data, selection. Components read it; pollers write it.
 
 import { isHidden } from "./directions";
@@ -61,6 +61,7 @@ const median = (xs: number[]) => {
 
 export class AppState {
   private savedChoices = resolveChoices(readChoices(), typeof location === "undefined" ? "" : location.search);
+  choicesRevision = $state(0);
   choicesReady = $state(false);
   choicesReset = $state(0);
   choicesSaved = $state(true);
@@ -68,9 +69,35 @@ export class AppState {
   journey = $state.raw(this.savedChoices.journey);
   stopChoices = $state(this.savedChoices.stops);
   railChoices = $state(this.savedChoices.rail);
-  persistChoices() {
-    this.choicesSaved = saveChoices({ version: 1, selected: this.selected, focus: this.focus,
+  snapshotChoices(): Choices {
+    return parseChoices({ version: 1, selected: this.selected, focus: this.focus, metroLines: this.metroLines, stationsOn: this.stationsOn,
       panelHidden: this.panelHidden, panelView: this.panelView, journey: this.journey, stops: this.stopChoices, rail: this.railChoices });
+  }
+  persistChoices() { this.choicesSaved = saveChoices(this.snapshotChoices()); }
+  applyChoices(value: Choices) {
+    const c = parseChoices(value);
+    this.tripGen++;
+    if (this.selected.join() !== c.selected.join() || JSON.stringify(this.journey) !== JSON.stringify(c.journey)) this.setAlert(null);
+    this.clearSelection();
+    if (this.choicesReady) {
+      for (const id of [...this.selected]) if (!c.selected.includes(id)) this.toggleLine(id);
+      for (const id of c.selected) if (!this.selected.includes(id)) this.toggleLine(id);
+    }
+    this.selected = c.selected;
+    this.focus = c.focus;
+    this.setMetroLines(c.metroLines);
+    this.setStationsOn(c.stationsOn);
+    this.journey = c.journey;
+    this.stopChoices = c.stops;
+    this.railChoices = c.rail;
+    this.panelHidden = c.panelHidden;
+    this.panelView = c.panelView;
+    this.stopRequest = null; this.metroStation = null;
+    this.tripEnds = null; this.tripStops = []; this.walking = []; this.railPosition = null;
+    this.choicesRevision++;
+    this.persistChoices();
+    this.writeUrl();
+    if (this.choicesReady) void Promise.allSettled(this.selected.map(fetchLineStatic)).then(() => this.fit(this.selected));
   }
   clearChoices() {
     this.tripGen++;
@@ -129,7 +156,7 @@ export class AppState {
   speedOn = $state(stored("speedOn", false, isBool));
   trafficOn = $state(false);
   // Metro, ISAP and tram stations on the map (the pinned lines' tracks stay either way).
-  stationsOn = $state(stored("stationsOn", false, isBool));
+  stationsOn = $state(this.savedChoices.stationsOn);
   // Map filters; the selected vehicle is always shown.
   only = $state.raw<Only>(stored("only", { fresh: false, onTime: false },
     v => !!v && isBool((v as Only).fresh) && isBool((v as Only).onTime)));
@@ -139,7 +166,7 @@ export class AppState {
   theme = $state<Theme>(stored("theme", "system", isTheme));
   // Metro, ISAP and tram (static): every station, and the pinned lines' tracks. metroStation: the tapped
   // station, whose card pins its lines.
-  metroLines = $state.raw<string[]>(stored("metroLines", [], isIds));
+  metroLines = $state.raw<string[]>(this.savedChoices.metroLines);
   metro = $state.raw<MetroData | null>(null);
   metroStation = $state<string | null>(null);
   // Starred bus lines: a chip row under the search, to show several at once.
@@ -259,7 +286,7 @@ export class AppState {
   });
 
   init() {
-    const ids = this.savedChoices.selected;
+    const ids = this.selected;
     this.selected = ids.slice(0, MAX_LINES);
     if (ids.length > MAX_LINES) this.say(`Ο σύνδεσμος είχε ${ids.length} γραμμές. Κράτησα τις πρώτες ${MAX_LINES}.`);
     this.writeUrl();
@@ -282,6 +309,7 @@ export class AppState {
       this.cityPoller?.visibilityChanged();
     });
     window.addEventListener("online", () => { void this.checkConnection(); });
+    this.choicesReady = true;
   }
 
   toggleLine(id: string) {

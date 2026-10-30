@@ -1,8 +1,11 @@
-export interface Preference { language: "el" | "en"; favorites: string[] }
+import { decodeChoices, encodeChoices } from "./choices";
+export interface Preference { language: "el" | "en"; favorites: string[]; choices?: string }
 export function preferences(value: unknown): Preference | null {
  const v=value as Partial<Preference> | null;
  if(!v || !["el","en"].includes(v.language??"") || !Array.isArray(v.favorites) || v.favorites.length>200 || !v.favorites.every(x=>typeof x==="string" && x.length>0 && x.length<=80)) return null;
- return {language:v.language!, favorites:[...new Set(v.favorites)]};
+ const choices = v.choices === undefined ? undefined : decodeChoices(v.choices);
+ if (choices === null) return null;
+ return {language:v.language!, favorites:[...new Set(v.favorites)], ...(choices ? { choices: encodeChoices(choices) } : {})};
 }
 export interface StorageLike { getItem(key:string):string|null; setItem(key:string,value:string):void }
 // A browser-tab session survives refresh/navigation. A new session uses one of two previews.
