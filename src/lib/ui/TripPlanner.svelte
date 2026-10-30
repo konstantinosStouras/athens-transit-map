@@ -3,13 +3,12 @@
   import { t as tr, locale, nameOf } from "../i18n.svelte";
   import type { Place } from "../trip";
 
-  // Kept across close and reopen.
-  interface End { text: string; place: Place | null }
-  const memo = { from: { text: "", place: null } as End, to: { text: "", place: null } as End, n: 3, applied: "" };
+
 </script>
 
 <script lang="ts">
   import { tick, untrack } from "svelte";
+  import type { JourneyEnd as End } from "../choices";
   import { fetchLines } from "../api";
   import { MAX_LINES } from "../selection";
   import { canPush, startPush, stopPush } from "../push";
@@ -32,8 +31,10 @@
   const ALERT_S = 2 * 3600;
   const phone = () => matchMedia("(max-width: 719px)").matches;
 
-  let ends = $state.raw<Record<Field, End>>({ from: memo.from, to: memo.to });
-  let n = $state(memo.n);
+  let ends = $state.raw<Record<Field, End>>(untrack(() => ({ from: app.journey.from, to: app.journey.to })));
+  let applied = "";
+  let restoring = untrack(() => !!app.journey.from.place && !!app.journey.to.place);
+  let n = $state(untrack(() => app.journey.n));
   let data = $state.raw<{ ix: TripIndex; places: Place[]; known: Set<string>; stale: string | null } | null>(null);
   let failed = $state(false);
   let folded = $state(false);
@@ -51,7 +52,7 @@
   const locGen = { from: 0, to: 0 };   // the same for each field's location request
   let closed = false;
 
-  $effect(() => { memo.from = ends.from; memo.to = ends.to; memo.n = n; });
+  $effect(() => { app.journey = { from: ends.from, to: ends.to, n, picked }; });
   $effect(() => () => { ctl?.abort(); clearTimeout(timer); gen++; locGen.from++; locGen.to++; closed = true; });
 
   async function load() {
@@ -91,10 +92,11 @@
 
   // Typing forgets the chosen place and asks the geocoder after a pause.
   function edit(f: Field, text: string) {
+    restoring = false;
     stopSearch();
     locGen[f]++;
     if (locating === f) locating = null;
-    memo.applied = "";
+    applied = "";
     ends = { ...ends, [f]: { text, place: null } };
     openField = f;
     activeKey = null;
@@ -115,6 +117,7 @@
   }
 
   function choose(f: Field, o: Opt) {
+    restoring = false;
     stopSearch();
     openField = null;
     if (o.me) return locate(f);
@@ -152,6 +155,7 @@
   }
 
   function swap() {
+    restoring = false;
     stopSearch();
     locGen.from++; locGen.to++;
     locating = null;
@@ -196,7 +200,7 @@
   $effect(() => { app.tripEnds = from && toPt ? { from: app.walking.find(w => w.kind === "board")?.from ?? centre(from.pts), to: app.walking.find(w => w.kind === "finish")?.to ?? toPt } : null; });
 
   // The result shown alone (a line, or "l1>l2" for a change), with its stops on the map.
-  let picked = $state<string | null>(null);
+  let picked = $state<string | null>(untrack(() => app.journey.picked));
   const stopAt = (k: number) => ({ at: ptOf(k), name: stop(k) });
   const xkey = (x: TripTransfer) => `${x.legs[0].line}>${x.legs[1].line}`;
   function setWalking(board: number, off: number, transfer?: [number, number]) {
@@ -248,8 +252,25 @@
   $effect(() => {
     if (!trips || !from || !to) return;
     const key = JSON.stringify([from.pts, to.pts, radius]);
-    if (key === memo.applied) return;
-    memo.applied = key;
+    if (key === applied) return;
+    applied = key;
+    if (restoring) {
+      restoring = false;
+      untrack(() => {
+        const savedTrip = trips.find(t => t.line === picked);
+        const savedTransfer = xfers.find(x => xkey(x) === picked);
+        if (savedTrip) {
+          const v = savedTrip.variants[0];
+          app.tripStops = [stopAt(v.from), stopAt(v.to)];
+          setWalking(v.from, v.to);
+        } else if (savedTransfer) {
+          const [a, b] = savedTransfer.legs;
+          app.tripStops = [stopAt(a.from), stopAt(a.to), ...(stop(b.from) === stop(a.to) ? [] : [stopAt(b.from)]), stopAt(b.to)];
+          setWalking(a.from, b.to, [a.to, b.from]);
+        } else picked = null;
+      });
+      return;
+    }
     untrack(() => {
       picked = null;
       app.tripStops = []; app.walking = [];
@@ -265,19 +286,11 @@
   function reset() {
     stopSearch();
     locGen.from++; locGen.to++;
-    locating = null;
-    err = null;
-    geo = null;
     ends = { from: { text: "", place: null }, to: { text: "", place: null } };
-    memo.applied = "";
     picked = null;
-    folded = false;
-    alertOpen = false;
-    app.setAlert(null);
-    for (const id of [...app.selected]) app.toggleLine(id);
-    app.tripEnds = null;
-    app.tripStops = []; app.walking = [];
-    void tick().then(() => inputs.from?.focus());
+    applied = "";
+    app.clearChoices();
+    onclose();
   }
 
   function close() {

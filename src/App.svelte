@@ -19,6 +19,7 @@
     history.replaceState(history.state, "", withLanguage(location.href, locale.language));
   });
   const app = new AppState();
+  $effect(() => { if (app.choicesReady) app.persistChoices(); });
   const account = new Account(app);
   const install = new InstallState();
   onMount(() => install.start());

@@ -6,11 +6,11 @@
   import type { AppState } from "../state.svelte";
   let { app, mode }: { app: AppState; mode: string } = $props();
   let trains = $state<TrainPosition[]>([]), failed = $state(false), loading = $state(true);
-  let selected = $state<string | null>(null);
+
   const en = $derived(locale.language === "en");
   $effect(() => {
     const currentMode = mode;
-    trains = []; selected = null; failed = false; loading = true;
+    trains = []; failed = false; loading = true;
     app.railPosition = null;
     let disposed = false, active: AbortController | null = null;
     async function refresh() {
@@ -30,11 +30,11 @@
     return () => { disposed = true; active?.abort(); clearInterval(timer); document.removeEventListener("visibilitychange", refresh); app.railPosition = null; };
   });
   $effect(() => {
-    const train = trains.find(t => t.id === selected && t.at >= app.now / 1000 - 120);
+    const train = trains.find(t => t.id === app.railChoices.train && t.at >= app.now / 1000 - 120);
     app.railPosition = train ? { point: train.point, label: train.line + " " + train.id + " → " + train.destination + " · " +
       (train.estimated ? (en ? "Timetable estimate, not GPS" : "Εκτίμηση προγράμματος, όχι GPS") : "GPS") } : null;
   });
-  function show(t: TrainPosition) { selected = t.id; app.panelHidden = true; app.fitPoints([t.point]); }
+  function show(t: TrainPosition) { app.railChoices.train = t.id; app.panelHidden = true; app.fitPoints([t.point]); }
 </script>
 <section>
   <h3>{en ? "Trains on the map" : "Συρμοί στον χάρτη"}</h3>
@@ -47,7 +47,7 @@
   {:else}
     {#if trains.some(t => t.indicative)}<p>{en ? "Indicative only: the source timetable has expired." : "Μόνο ενδεικτικά: το πρόγραμμα της πηγής έχει λήξει."}</p>{/if}
     <ul>{#each trains as t (t.id)}<li>
-      <button type="button" aria-pressed={selected === t.id} onclick={() => show(t)}>
+      <button type="button" aria-pressed={app.railChoices.train === t.id} onclick={() => show(t)}>
         <strong>{t.line} {t.id} → {t.destination}</strong>
         <span>{en ? "Next" : "Επόμενη"}: {t.next || "—"}</span>
         {#if !t.estimated}<span>{t.delay == null ? (en ? "Delay unknown" : "Άγνωστη καθυστέρηση") : t.delay + (en ? " min delay" : " λεπτά καθυστέρηση")}</span>{/if}

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t as tr, locale, setLanguage, nameOf } from "../i18n.svelte";
   import { languageQuery } from "../../../public/language-url.js";
-  import { tick } from "svelte";
+  import { tick, untrack } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
   import { directionGroups, focusGroup, otherDirection } from "../directions";
   import { ago, clock, duration, fmtMinutes } from "../format";
@@ -22,7 +22,7 @@
   let collapsed = $state(matchMedia("(max-width: 719px)").matches);
   // One popover at a time, opened from the buttons on the right: the map menu, what the symbols mean, or the
   // trip planner (loaded on first open), or help.
-  let pop = $state<"layers" | "help" | "trip" | null>(null);
+  let pop = $state<"layers" | "help" | "trip" | null>(untrack(() => app.panelView === "trip" ? "trip" : null));
   // On a phone a popover covers the panel: what it covers cannot be reached by the keyboard either.
   const narrow = new MediaQuery("(max-width: 719px)");
   function toggleMobilePanel() { app.panelHidden = !app.panelHidden; }
@@ -40,8 +40,16 @@
   let menuOpen = $state(false);
   let menuButton: HTMLButtonElement | undefined = $state();
   $effect(() => { if (menuOpen) void tick().then(() => document.querySelector<HTMLButtonElement>(".menu-heading button")?.focus()); });
-  let stopsOpen = $state(false);
-  let suburbanOpen = $state(false);
+  let stopsOpen = $state(untrack(() => app.panelView === "stops"));
+  let suburbanOpen = $state(untrack(() => app.panelView === "rail"));
+  $effect(() => { app.panelView = pop === "trip" ? "trip" : suburbanOpen ? "rail" : stopsOpen ? "stops" : "main"; });
+  let resetSeen = untrack(() => app.choicesReset);
+  $effect(() => {
+    const revision = app.choicesReset;
+    if (revision === resetSeen) return;
+    resetSeen = revision;
+    untrack(() => { pop = null; suburbanOpen = false; stopsOpen = false; menuOpen = false; searching = false; });
+  });
   const trafficTiles = import.meta.env.VITE_TRAFFIC_CREDIT?.trim() ? trafficTileTemplate(import.meta.env.VITE_TRAFFIC_TILES) : null;
   function railShown(mode: "tram" | "metro") {
     const ids = app.metro?.lines.filter(line => mode === "tram" ? /^T\d+$/.test(line.id) : /^M\d+$/.test(line.id)).map(line => line.id) ?? [];
@@ -180,6 +188,8 @@
     <button type="button" aria-expanded={installHelp} aria-controls="install-guide" onclick={() => installHelp = !installHelp}>{locale.language === "en" ? "Install app" : "Εγκατάσταση εφαρμογής"}</button>
   </div>
   </div>
+  <p>{locale.language === "en" ? (app.choicesSaved ? "Your choices are saved on this device." : "This browser cannot save your choices.") : (app.choicesSaved ? "Οι επιλογές αποθηκεύονται σε αυτή τη συσκευή." : "Ο browser δεν μπορεί να αποθηκεύσει τις επιλογές.")}</p>
+  <button type="button" onclick={() => app.clearChoices()}>{locale.language === "en" ? "Clear saved choices and start again" : "Διαγραφή επιλογών και νέα αρχή"}</button>
   <p class="menu-label">{locale.language === "en" ? "News and feedback" : "Νέα και σχόλια"}</p>
   <nav class="shortcuts" aria-label={locale.language === "en" ? "About and feedback" : "Νέα και σχόλια"}>
     <a href={`${import.meta.env.BASE_URL}updates.html${languageQuery(locale.language)}`} title={tr("Τι νέο υπάρχει ↗")}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></svg><span>{locale.language === "en" ? "What’s new" : "Νέα"}</span></a>
@@ -263,7 +273,7 @@
   <div hidden={pop === "trip"}>
   <!-- Always shown: the picked lines, the search, and the chevron. The map buttons are on the right (.rail). -->
   <div class="bar">
-    <LinePicker {app} expanded={!collapsed} searchOpen={searching} onsearch={() => (searching = true)} onclose={() => (searching = false)} ondirections={() => toggle("trip")} {tail} />
+    {#key app.choicesReset}<LinePicker {app} expanded={!collapsed} searchOpen={searching} onsearch={() => (searching = true)} onclose={() => (searching = false)} ondirections={() => toggle("trip")} {tail} />{/key}
   </div>
 
   {#if app.selected.length || app.cityOn}

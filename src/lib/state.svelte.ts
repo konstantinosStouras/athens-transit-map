@@ -1,3 +1,4 @@
+import { readChoices, resolveChoices, saveChoices, clearSavedChoices, emptyChoices, emptyJourney } from "./choices";
 // The one store: chosen lines, live/static data, selection. Components read it; pollers write it.
 
 import { isHidden } from "./directions";
@@ -61,13 +62,48 @@ const median = (xs: number[]) => {
 };
 
 export class AppState {
+  private savedChoices = resolveChoices(readChoices(), typeof location === "undefined" ? "" : location.search);
+  choicesReady = $state(false);
+  choicesReset = $state(0);
+  choicesSaved = $state(true);
+  panelView = $state<"main" | "trip" | "rail" | "stops">(this.savedChoices.panelView);
+  journey = $state.raw(this.savedChoices.journey);
+  stopChoices = $state(this.savedChoices.stops);
+  railChoices = $state(this.savedChoices.rail);
+  persistChoices() {
+    this.choicesSaved = saveChoices({ version: 1, selected: this.selected, focus: this.focus,
+      panelHidden: this.panelHidden, panelView: this.panelView, journey: this.journey, stops: this.stopChoices, rail: this.railChoices });
+  }
+  clearChoices() {
+    this.tripGen++;
+    this.clearSelection();
+    for (const id of [...this.selected]) this.toggleLine(id);
+    this.focus = {};
+    this.setMetroLines([]);
+    this.setStationsOn(false);
+    this.setAlert(null);
+    this.stopRequest = null;
+    this.metroStation = null;
+    this.tripEnds = null;
+    this.tripStops = [];
+    this.walking = [];
+    this.railPosition = null;
+    this.journey = emptyJourney();
+    this.railChoices = emptyChoices().rail;
+    this.stopChoices = emptyChoices().stops;
+    this.panelHidden = false;
+    this.panelView = "main";
+    this.choicesReset++;
+    clearSavedChoices();
+    this.writeUrl();
+  }
   stopRequest = $state.raw<{ name: string; lat: number; lon: number } | null>(null);
   infoOpen = $state(false);
   infoTab = $state<"sources" | "stats">("sources");
   lines = $state.raw<LineInfo[]>([]);
   linesFailed = $state(false);
   linesLoading = $state(false);
-  selected = $state.raw<string[]>([]);
+  selected = $state.raw<string[]>(this.savedChoices.selected);
   live = $state.raw<Record<string, LineLive>>({});
   statics = $state.raw<Record<string, LineStatic>>({});
   staticFailed = $state.raw<Record<string, boolean>>({});
@@ -80,7 +116,7 @@ export class AppState {
   private lastStatusCheck = -Infinity;
   selection = $state.raw<Selection | null>(null);
   // Per line, the variants of the one direction to show (route card, "μόνο → …").
-  focus = $state.raw<Record<string, string[]>>({});
+  focus = $state.raw<Record<string, string[]>>(this.savedChoices.focus);
   notice = $state<string | null>(null);
   now = $state(Date.now());
   // City layer (/v1/vehicles/tiles): the live vehicles of the map view; null before data or when the server lacks it.
@@ -128,7 +164,7 @@ export class AppState {
   // The stops of the trip picked in the planner: where to get on, change and get off ([lat, lon]).
   tripStops = $state.raw<{ at: [number, number]; name: string }[]>([]);
   walking = $state.raw<WalkingLeg[]>([]);
-  panelHidden = $state(false);
+  panelHidden = $state(this.savedChoices.panelHidden);
   railPosition = $state.raw<{ point: [number, number]; label: string } | null>(null);
   fitPoints: (points: [number, number][]) => void = () => {};
 
@@ -225,7 +261,7 @@ export class AppState {
   });
 
   init() {
-    const ids = selectionIds(location.search);
+    const ids = this.savedChoices.selected;
     this.selected = ids.slice(0, MAX_LINES);
     if (ids.length > MAX_LINES) this.say(`Ο σύνδεσμος είχε ${ids.length} γραμμές. Κράτησα τις πρώτες ${MAX_LINES}.`);
     this.writeUrl();
@@ -594,6 +630,11 @@ export class AppState {
     try {
       const s = await fetchLineStatic(id);
       this.statics = { ...this.statics, [id]: s };
+      const focused = this.focus[id];
+      if (focused) {
+        const valid = focused.filter(variant => variant in s.variants);
+        if (valid.length !== focused.length) this.setFocus(id, valid.length ? valid : null);
+      }
       this.staticFailed = { ...this.staticFailed, [id]: false };
       this.staticRetryAt.delete(id);
     } catch {

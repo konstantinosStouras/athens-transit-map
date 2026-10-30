@@ -18,8 +18,14 @@
   let loading = $state(true), failed = $state(false), locating = $state(false);
   let locationError = $state<"denied" | "unavailable" | null>(null);
   let origin = $state.raw<Pt | null>(null);
-  let accuracy = $state(0), query = $state(untrack(() => seed?.name ?? "")), radius = $state(500), limit = $state(8);
+  let accuracy = $state(0), query = $state(untrack(() => seed?.name ?? app.stopChoices.query)), radius = $state(untrack(() => app.stopChoices.radius)), limit = $state(8);
+  const restoreStop = untrack(() => seed ?? app.stopChoices.selected);
   let selected = $state<StopPoint | null>(null);
+  $effect(() => {
+    app.stopChoices.query = query;
+    app.stopChoices.radius = radius;
+    if (!loading) app.stopChoices.selected = selected ? { name: selected.name, lat: selected.lat, lon: selected.lon } : null;
+  });
   let ownedStops: AppState["tripStops"] | null = null;
   function clearNearby() {
     if (app.walking[0]?.kind === "nearby") app.walking = [];
@@ -70,7 +76,7 @@
       const ix = await loadTripIndex();
       if (!gone) {
         points = indexStops(ix); version = ix.v;
-        if (seed) selected = points.find(s => [s.name, s.name_en ?? ""].some(n => fold(n) === fold(seed!.name)) && distM([s.lat,s.lon],[seed!.lat,seed!.lon]) <= 12) ?? null;
+        if (restoreStop) selected = points.find(s => [s.name, s.name_en ?? ""].some(n => fold(n) === fold(restoreStop.name)) && distM([s.lat,s.lon],[restoreStop.lat,restoreStop.lon]) <= 12) ?? null;
       }
     } catch { if (!gone) failed = true; }
     finally { if (!gone) loading = false; }
