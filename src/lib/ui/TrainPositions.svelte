@@ -34,7 +34,7 @@
     app.railPosition = train ? { point: train.point, label: train.line + " " + train.id + " → " + train.destination + " · " +
       (train.estimated ? (en ? "Timetable estimate, not GPS" : "Εκτίμηση προγράμματος, όχι GPS") : "GPS") } : null;
   });
-  function show(t: TrainPosition) { selected = t.id; app.fitPoints([t.point]); }
+  function show(t: TrainPosition) { selected = t.id; app.panelHidden = true; app.fitPoints([t.point]); }
 </script>
 <section>
   <h3>{en ? "Trains on the map" : "Συρμοί στον χάρτη"}</h3>

@@ -210,7 +210,7 @@
   function focusWalk() {
     const leg = app.walking.find(w => w.kind === "board");
     if (!leg) return;
-    folded = false;
+    app.panelHidden = true;
     void tick().then(() => app.fitPoints(leg.route ? leg.route.geometry.coordinates.map(p => [p[1], p[0]]) : [leg.from, leg.to]));
   }
   function solo(t: TripLine) {
@@ -219,6 +219,7 @@
     app.tripStops = [stopAt(v.from), stopAt(v.to)];
     picked = t.line;
     setWalking(v.from, v.to);
+    app.panelHidden = true;
   }
   function pickXfer(x: TripTransfer) {   // another trip than the alert's: the alert ends
     const [a, b] = x.legs;
@@ -226,6 +227,7 @@
     app.tripStops = [stopAt(a.from), stopAt(a.to), ...(stop(b.from) === stop(a.to) ? [] : [stopAt(b.from)]), stopAt(b.to)];
     picked = xkey(x);
     setWalking(a.from, b.to, [a.to, b.from]);
+    app.panelHidden = true;
   }
   // Editing either endpoint clears the old walking overlay immediately.
   $effect(() => { if (!from || !to) untrack(() => { app.walking = []; app.tripStops = []; picked = null; }); });

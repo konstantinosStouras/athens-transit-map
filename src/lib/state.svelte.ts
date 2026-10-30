@@ -128,6 +128,7 @@ export class AppState {
   // The stops of the trip picked in the planner: where to get on, change and get off ([lat, lon]).
   tripStops = $state.raw<{ at: [number, number]; name: string }[]>([]);
   walking = $state.raw<WalkingLeg[]>([]);
+  panelHidden = $state(false);
   railPosition = $state.raw<{ point: [number, number]; label: string } | null>(null);
   fitPoints: (points: [number, number][]) => void = () => {};
 
