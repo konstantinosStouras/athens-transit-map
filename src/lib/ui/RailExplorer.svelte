@@ -37,7 +37,7 @@
     <button type="button" aria-pressed={app.metroLines.includes(mode)} onclick={() => {
       const shown = app.metroLines.includes(mode);
       app.toggleMetroLine(mode);
-      if (!shown) { app.setStationsOn(true); app.fitMetro([mode]); }
+      if (!shown) { app.panelHidden = true; app.setStationsOn(true); app.fitMetro([mode]); }
     }}>{en ? (app.metroLines.includes(mode) ? "Hide route from map" : "Show route and stations on map") : (app.metroLines.includes(mode) ? "Απόκρυψη γραμμής από τον χάρτη" : "Εμφάνιση γραμμής και σταθμών στον χάρτη")}</button>
     {#if selected}<RailDepartures stop={selected} line={mode} />{/if}
   {/if}

@@ -25,11 +25,7 @@
   let pop = $state<"layers" | "help" | "trip" | null>(null);
   // On a phone a popover covers the panel: what it covers cannot be reached by the keyboard either.
   const narrow = new MediaQuery("(max-width: 719px)");
-  let mobileCollapsed = $state((() => { try { return localStorage.getItem("oasa-mobile-panel-collapsed") === "true"; } catch { return false; } })());
-  function toggleMobilePanel() {
-    mobileCollapsed = !mobileCollapsed;
-    try { localStorage.setItem("oasa-mobile-panel-collapsed", String(mobileCollapsed)); } catch { /* blocked storage */ }
-  }
+  function toggleMobilePanel() { app.panelHidden = !app.panelHidden; }
   let tripButton: HTMLButtonElement | undefined = $state();
   let layersButton: HTMLButtonElement | undefined = $state();
   let helpButton: HTMLButtonElement | undefined = $state();
@@ -61,10 +57,11 @@
     app.setMetroLines([...new Set([...app.metroLines, ...ids])]);
     app.setStationsOn(true);
     app.selectStation(null);
+    app.panelHidden = true;
     app.fitMetro(ids);
   }
   $effect(() => {
-    if (app.stopRequest) { stopsOpen = true; mobileCollapsed = false; pop = null; alertHelp = false; }
+    if (app.stopRequest) { stopsOpen = true; app.panelHidden = false; pop = null; alertHelp = false; }
   });
 
   // Focus returns to the button that opened a popover.
@@ -74,6 +71,7 @@
   }
   const closeTrip = () => { pop = null; void tick().then(() => document.querySelector<HTMLButtonElement>(".directions-button")?.focus()); };   // its A and B stay on the map until its own ×
   const toggle = (p: "layers" | "help" | "trip") => {
+    app.panelHidden = false;
     pop = pop === p ? null : p;
     if (pop === "help") void tick().then(() => document.getElementById("pop-help")?.focus());
     if (pop !== "layers") return;
@@ -90,7 +88,9 @@
     const target = e.target as Element | null;
     if (target?.closest?.(".menu-drawer, .menu-toggle")) return;
     if (menuOpen) menuOpen = false;
-    if (pop === "trip" || (e.target as Element | null)?.closest?.(".panel, .rail, .popwrap")) return;
+    if ((e.target as Element | null)?.closest?.(".panel, .rail, .popwrap, .maplibregl-popup")) return;
+    if (app.selected.length || app.metroLines.length || pop === "trip" || suburbanOpen) app.panelHidden = true;
+    if (pop === "trip") return;
     searching = false;
     collapsed = true;
     pop = null;
@@ -164,13 +164,13 @@
 
   <p class="menu-label">{locale.language === "en" ? "Explore" : "Εξερεύνηση"}</p>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div role="presentation" onclick={(e) => { if ((e.target as Element).closest("button")) { menuOpen = false; mobileCollapsed = false; } }}>
+  <div role="presentation" onclick={(e) => { if ((e.target as Element).closest("button")) { menuOpen = false; if (!(e.target as Element).closest("[data-map-choice]")) app.panelHidden = false; } }}>
   <div class="service-actions" role="group" aria-label={locale.language === "en" ? "Data and alerts" : "Δεδομένα και ειδοποιήσεις"}>
     <button type="button" aria-expanded={stopsOpen} aria-controls="stop-finder" onclick={() => { app.stopRequest = null; stopsOpen = !stopsOpen; pop = null; alertHelp = false; }}>{locale.language === "en" ? "Stops near you" : "Στάσεις κοντά σου"}</button>
     <button type="button" aria-expanded={suburbanOpen} aria-controls="suburban-board" onclick={() => { suburbanOpen = !suburbanOpen; app.loadMetro(); pop = null; }}>{locale.language === "en" ? "ISAP, metro, tram & suburban departures" : "Αναχωρήσεις ΗΣΑΠ, μετρό, τραμ & προαστιακού"}</button>
     {#if app.metro}
-      <button type="button" aria-pressed={railShown("metro")} onclick={() => showRail("metro")}>{locale.language === "en" ? (railShown("metro") ? "Hide metro routes from map" : "Show metro routes on map") : (railShown("metro") ? "Απόκρυψη γραμμών μετρό" : "Δείξε τις γραμμές μετρό στον χάρτη")}</button>
-      <button type="button" aria-pressed={railShown("tram")} onclick={() => showRail("tram")}>{locale.language === "en" ? (railShown("tram") ? "Hide tram routes from map" : "Show tram routes on map") : (railShown("tram") ? "Απόκρυψη γραμμών τραμ" : "Δείξε τις γραμμές τραμ στον χάρτη")}</button>
+      <button type="button" aria-pressed={railShown("metro")} data-map-choice onclick={() => showRail("metro")}>{locale.language === "en" ? (railShown("metro") ? "Hide metro routes from map" : "Show metro routes on map") : (railShown("metro") ? "Απόκρυψη γραμμών μετρό" : "Δείξε τις γραμμές μετρό στον χάρτη")}</button>
+      <button type="button" aria-pressed={railShown("tram")} data-map-choice onclick={() => showRail("tram")}>{locale.language === "en" ? (railShown("tram") ? "Hide tram routes from map" : "Show tram routes on map") : (railShown("tram") ? "Απόκρυψη γραμμών τραμ" : "Δείξε τις γραμμές τραμ στον χάρτη")}</button>
     {:else}
       <button type="button" onclick={() => app.loadMetro()}>{locale.language === "en" ? "Load metro and tram map" : "Φόρτωση χάρτη μετρό και τραμ"}</button>
     {/if}
@@ -189,19 +189,17 @@
   </nav>
 </aside>
 {/if}
-<section class="panel" class:mobile-collapsed={narrow.current && mobileCollapsed} class:compact inert={!!pop && pop !== "trip" && narrow.current} aria-label={tr("Πίνακας ελέγχου")}>
+<section class="panel" class:mobile-collapsed={app.panelHidden} class:compact inert={!!pop && pop !== "trip" && narrow.current} aria-label={tr("Πίνακας ελέγχου")}>
   <header class="panel-header">
     <button type="button" class="menu-toggle" bind:this={menuButton} aria-expanded={menuOpen} aria-label={locale.language === "en" ? "Open menu" : "Άνοιγμα μενού"} onclick={() => menuOpen = !menuOpen}><span aria-hidden="true">☰</span></button>
-    {#if narrow.current}
-      <button type="button" class="panel-toggle brand" onclick={toggleMobilePanel} aria-expanded={!mobileCollapsed} aria-controls="mobile-panel-content"
-        aria-label={locale.language === "en" ? (mobileCollapsed ? "Expand control panel" : "Collapse control panel") : (mobileCollapsed ? "Άνοιγμα πίνακα ελέγχου" : "Σύμπτυξη πίνακα ελέγχου")}
-        title={locale.language === "en" ? (mobileCollapsed ? "Expand control panel" : "Collapse control panel") : (mobileCollapsed ? "Άνοιγμα πίνακα ελέγχου" : "Σύμπτυξη πίνακα ελέγχου")}>
-        <span class="brand-full">{tr("ΟΑΣΑ · Live")}</span><span class="brand-short">{locale.language === "en" ? "OASA" : "ΟΑΣΑ"}</span>
-        <svg viewBox="0 0 12 8" width="12" height="8" aria-hidden="true" class:expanded={!mobileCollapsed}><path d="m1 1 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <button type="button" class="panel-toggle brand" onclick={toggleMobilePanel} aria-expanded={!app.panelHidden} aria-controls="mobile-panel-content"
+        aria-label={locale.language === "en" ? (app.panelHidden ? "Show my choices" : "Show map, keep my choices") : (app.panelHidden ? "Άνοιγμα πίνακα ελέγχου" : "Σύμπτυξη πίνακα ελέγχου")}
+        title={locale.language === "en" ? (app.panelHidden ? "Show my choices" : "Show map, keep my choices") : (app.panelHidden ? "Άνοιγμα πίνακα ελέγχου" : "Σύμπτυξη πίνακα ελέγχου")}>
+        <span>{locale.language === "en" ? (app.panelHidden ? "Show my choices" : "Show map") : (app.panelHidden ? "Οι επιλογές μου" : "Εμφάνιση χάρτη")}</span>
+        <svg viewBox="0 0 12 8" width="12" height="8" aria-hidden="true" class:expanded={!app.panelHidden}><path d="m1 1 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
-    {:else}<span class="brand">{tr("ΟΑΣΑ · Live")}</span>{/if}
   </header>
-  <div id="mobile-panel-content" hidden={narrow.current && mobileCollapsed}>
+  <div id="mobile-panel-content" hidden={app.panelHidden}>
 
   <h1 class="sr">{tr("Λεωφορεία ΟΑΣΑ")}</h1>
 
@@ -522,10 +520,11 @@
   .panel-toggle svg { flex: none; color: var(--muted); }
   .panel-toggle svg.expanded { transform: rotate(180deg); }
   .panel-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
-  .brand-short { display: none; }
+
+  .panel.mobile-collapsed { width: max-content; max-width: calc(100% - 76px); }
   .panel.mobile-collapsed .panel-header { margin-bottom: 0; }
   #mobile-panel-content[hidden] { display: none; }
-  @media (max-width: 379px) { .brand-full { display: none; } .brand-short { display: inline; } }
+
   .brand { font-weight: 800; font-size: 15px; white-space: nowrap; letter-spacing: -.02em; }
   .language { display: flex; gap: 4px; }
   .language img { display: block; margin: auto; border-radius: 2px; }
@@ -634,6 +633,7 @@
   @media (max-width: 719px) {
     .account-control { right: 10px; }
     .panel { max-height: 65dvh; left: 8px; right: 60px; width: auto; max-width: none; padding: 10px 12px; }
+    .panel.mobile-collapsed, .panel.mobile-collapsed.compact { right: auto; width: max-content; max-width: calc(100% - 76px); }
     .panel.compact { right: 60px; width: auto; max-width: none; }
     .rail { top: calc(100px + env(safe-area-inset-top)); }   /* account and locate above it */
     .popwrap { top: calc(12px + env(safe-area-inset-top)); left: 8px; right: 60px; width: auto; max-width: none;

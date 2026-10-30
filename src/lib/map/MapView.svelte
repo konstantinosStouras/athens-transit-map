@@ -5,7 +5,7 @@
   import workerUrl from "virtual:maplibre-worker";
   import { debounce, throttle } from "../debounce";
   import { ageLabel, dayMonth, gtfsEnded, isStalePos, passes } from "../format";
-  import { untrack } from "svelte";
+  import { untrack, tick } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
   import type { LngLat } from "../glide";
   import { vehicleHeading } from "../heading";
@@ -120,7 +120,8 @@
   }
 
   // Include every displayed bus and rail route in the results view.
-  function fitTo(_ids: string[] = []) {
+  async function fitTo(_ids: string[] = []) {
+    await tick();
     if (!map) return;
     const bus = bounds(drawn);
     const frame = new LngLatBounds();
@@ -133,7 +134,8 @@
     map.fitBounds(frame, { padding: padding(), maxZoom: 15, duration: 600 });
   }
 
-  function fitPoints(points: [number, number][]) {
+  async function fitPoints(points: [number, number][]) {
+    await tick();
     if (!map || !points.length) return;
     stopFollowing();
     const b = new LngLatBounds();

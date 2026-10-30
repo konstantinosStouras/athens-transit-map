@@ -46,6 +46,7 @@
     query = "";
     open = false;
     input?.blur();   // show the map on phones
+    app.panelHidden = true;
     onclose?.();
   }
 
