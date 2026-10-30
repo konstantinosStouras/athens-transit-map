@@ -33,7 +33,8 @@
 
 {#if account.allowed}
 <MapView {app} />
-{#key app.choicesRevision}<Panel {app} {install} signedIn={account.verified} syncStatus={account.syncStatus} onaccount={() => account.open = true} />{/key}
+<!-- Destroy the old planner during reset, before its effects can restore cleared map pins. -->
+{#key `${app.choicesRevision}:${app.choicesReset}`}<Panel {app} {install} signedIn={account.verified} syncStatus={account.syncStatus} onaccount={() => account.open = true} />{/key}
 <InfoCard {app} />
 <StationCard {app} />
 {/if}
