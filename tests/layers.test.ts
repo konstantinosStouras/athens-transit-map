@@ -38,6 +38,14 @@ describe("layers", () => {
     expect(variantFC(line, null).features).toEqual([]);
     expect(stopsFC(line, "nope").features).toEqual([]);
   });
+  it("frames only visible directions", () => {
+    const shape = line.data.variants[variant].shape;
+    expect(bounds([{ ...line, visible: new Set([variant]) }])).toEqual([
+      [Math.min(...shape.map(p => p[1])), Math.min(...shape.map(p => p[0]))],
+      [Math.max(...shape.map(p => p[1])), Math.max(...shape.map(p => p[0]))],
+    ]);
+    expect(bounds([{ ...line, visible: new Set() }])).toBeNull();
+  });
   it("computes bounds around Athens", () => {
     const b = bounds([line])!;
     expect(b[0][0]).toBeGreaterThan(23.5);

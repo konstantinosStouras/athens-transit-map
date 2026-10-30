@@ -67,7 +67,7 @@ The UI follows the viewer of [foivospro/athens-gtfs-realtime](https://github.com
   place with a ring ("corrected"). One motion per vehicle, shared by the city layer and the chosen lines.
 - Direction chips on the vehicle and route cards; ⇄ on the "μόνο → …" pill switches direction.
 - Metro, ISAP and tram: stations always shown (from the STASY GTFS on
-  [data.gov.gr](https://data.gov.gr/dataset/4e897a75-975a-4ce7-af65-f32ea01f93b9)), static (no live data exists).
+  [data.gov.gr](https://data.gov.gr/dataset/4e897a75-975a-4ce7-af65-f32ea01f93b9)), static tracks, with STASY timetable departures on station cards (including indicative warnings for expired timetables). Suburban rail departures, delays, status and platforms are available from Explore → ISAP, metro, tram & suburban departures. These boards use the default API base and need no extra configuration. The transport explorer also shows STASY timetable-based train estimates and recent suburban GPS positions from the official backend, with stale positions hidden.
   Pin a line in the layers menu or on a tapped station's card to draw its track. Rebuild
   `public/metro.json` with `bun scripts/metro.ts <unzipped GTFS dir>`, then `bun scripts/metro-osm.ts`:
   the feed has no shapes, so the tracks come from OpenStreetMap route relations (© OSM contributors, ODbL).

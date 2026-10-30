@@ -2,6 +2,7 @@
   import { t as tr, nameOf, locale } from "../i18n.svelte";
   import type { AppState } from "../state.svelte";
   import MetroToggles from "./MetroToggles.svelte";
+  import RailDepartures from "./RailDepartures.svelte";
 
   // The tapped metro/tram station: its lines, each with the switch that draws it on the map.
   let { app }: { app: AppState } = $props();
@@ -18,7 +19,7 @@
       <button type="button" class="close" aria-label={tr("Κλείσιμο")} onclick={() => app.selectStation(null)}>×</button>
     </header>
     <p>{tr("Άνοιξε μια γραμμή για να φαίνεται η διαδρομή της.")}</p>
-    <p>{locale.language === "en" ? "Routes and stops are static. Timetables and live arrivals are not available here." : "Οι γραμμές και οι στάσεις είναι στατικές. Ωράρια και ζωντανές αφίξεις δεν είναι διαθέσιμα εδώ."}</p>
+    <RailDepartures stop={station.name} />
     <MetroToggles {app} ids={station.lines} />
     <p class="hide"><button type="button" class="link" onclick={() => app.setStationsOn(false)}>{tr("Κρύψε τους σταθμούς")}</button>{tr("\r\n      Ξανά από το κουμπί με το μάτι → Μετρό.")}</p>
   </section>
@@ -26,7 +27,7 @@
 
 <style>
   .card { position: absolute; z-index: 6; left: 12px; bottom: 28px; width: 340px; padding: 12px 14px;
-    background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); max-height: 65vh; overflow-y: auto;
     }
   header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
   h2 { flex: 1; margin: 0; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

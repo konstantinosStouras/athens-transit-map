@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { t as tr } from "../i18n.svelte";
+    import { t as tr, locale } from "../i18n.svelte";
   import { MediaQuery } from "svelte/reactivity";
   import { API_DOCS, BACKEND_REPO, FRONTEND_REPO, GTFS_PAGE, STASY_GTFS_PAGE, TILE_CREDITS } from "../sources";
 
@@ -72,6 +72,7 @@
       <p>{tr("Οι διαδρομές, οι στάσεις και το πρόγραμμα του ΟΑΣΑ.")}</p>
       <p class="src"><a href={GTFS_PAGE} target="_blank" rel="noopener">{tr("Αρχείο GTFS του ΟΑΣΑ (data.gov.gr)")}</a></p>
       <p>{tr("Μετρό, ΗΣΑΠ και τραμ: σταθμοί από το GTFS της ΣΤΑΣΥ, χάραξη γραμμών από το OpenStreetMap.")}</p>
+        <p>{locale.language === "en" ? "Station cards show STASY timetable departures, with indicative warnings when expired. Explore also provides suburban rail departure boards from railway.gov.gr via the backend, including reported delays and platforms. The provider can serve cached boards; unknown delays are not zero. The train explorer separately shows suburban GPS positions and clearly labelled STASY timetable estimates." : "Οι κάρτες σταθμών δείχνουν αναχωρήσεις από το πρόγραμμα ΣΤΑΣΥ, με προειδοποίηση όταν έχει λήξει. Στην Εξερεύνηση υπάρχουν πίνακες προαστιακού από το railway.gov.gr μέσω του backend, με αναφερόμενες καθυστερήσεις και αποβάθρες. Η πηγή μπορεί να δώσει αποθηκευμένο πίνακα· άγνωστη καθυστέρηση δεν σημαίνει μηδενική. Η εξερεύνηση συρμών δείχνει χωριστά θέσεις GPS προαστιακού και σαφώς επισημασμένες εκτιμήσεις του προγράμματος ΣΤΑΣΥ."}</p>
       <p class="src"><a href={STASY_GTFS_PAGE} target="_blank" rel="noopener">{tr("GTFS της ΣΤΑΣΥ (data.gov.gr)")}</a><span aria-hidden="true">&nbsp;·&nbsp;</span><a
         href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap (ODbL)</a></p>
     </li>
