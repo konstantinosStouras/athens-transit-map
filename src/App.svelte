@@ -26,14 +26,14 @@
   onMount(() => account.start());
   let started = false;
   $effect(() => { if (account.allowed && !started) { started = true; app.init(); } });
-  $effect(() => account.sync(locale.language, app.favorites));
+  $effect(() => account.sync(locale.language, app.favorites, app.snapshotChoices()));
   $effect(() => applyTheme(app.theme));
   if (import.meta.env.DEV) Object.assign(window, { __app: app });
 </script>
 
 {#if account.allowed}
 <MapView {app} />
-<Panel {app} {install} signedIn={account.verified} onaccount={() => account.open = true} />
+{#key app.choicesRevision}<Panel {app} {install} signedIn={account.verified} syncStatus={account.syncStatus} onaccount={() => account.open = true} />{/key}
 <InfoCard {app} />
 <StationCard {app} />
 {/if}

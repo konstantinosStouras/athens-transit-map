@@ -21,7 +21,7 @@
   {#if deleteStep && account.user}
    <p class="eyebrow">{words("Ο ΛΟΓΑΡΙΑΣΜΟΣ ΣΟΥ","YOUR ACCOUNT")}</p>
    <h1 id="account-title">{words("Διαγραφή λογαριασμού;","Delete your account?")}</h1>
-   <p id="account-intro">{words("Θα διαγραφούν ο λογαριασμός OASA Live, η αποθηκευμένη γλώσσα και οι αγαπημένες γραμμές σου από το Firebase. Η ενέργεια δεν αναιρείται.","This permanently deletes your OASA Live account, saved language and favourite lines from Firebase. This cannot be undone.")}</p>
+   <p id="account-intro">{words("Θα διαγραφούν ο λογαριασμός OASA Live, οι αποθηκευμένες επιλογές, η γλώσσα και οι αγαπημένες γραμμές σου από το Firebase. Η ενέργεια δεν αναιρείται.","This permanently deletes your OASA Live account, saved choices, language and favourite lines from Firebase. This cannot be undone.")}</p>
    <p class="hint">{words("Σχόλια που έστειλες ξεχωριστά δεν διαγράφονται εδώ. Μια ελάχιστη καταγραφή διαγραφής εμποδίζει παλιές συνδέσεις να επαναφέρουν τις προτιμήσεις σου.","Feedback sent separately is not deleted here. A minimal deletion record prevents old sessions from restoring your preferences.")}</p>
    <form onsubmit={async e=>{e.preventDefault();if(!deleteConfirmed)return;const removed=await account.deleteAccount(deletePassword);deletePassword="";if(removed){deleteStep=false;deleteConfirmed=false;}}}>
     {#if account.user.providerData.some(provider=>provider.providerId==="password")}
@@ -43,7 +43,7 @@
    <p class="eyebrow">{words("Ο ΛΟΓΑΡΙΑΣΜΟΣ ΣΟΥ","YOUR ACCOUNT")}</p><h1 id="account-title">{words("Οι διαδρομές σου, παντού.","Your journeys, everywhere.")}</h1>
    <p id="account-intro" class="email">{account.user?.displayName || account.user?.email}</p><p class="verified">✓ {words("Επιβεβαιωμένο email","Email verified")}</p>
    {#if account.deletionPending}<p class="error" role="status">{words("Ζητήθηκε διαγραφή και οι προτιμήσεις αφαιρέθηκαν. Ολοκλήρωσε τη διαγραφή ή αποσυνδέσου.","Deletion was requested and preferences were erased. Finish deleting the account or sign out.")}</p>{/if}
-   <p>{words("Η γλώσσα και οι αγαπημένες γραμμές σου αποθηκεύονται στον προσωπικό σου λογαριασμό OASA Live.","Your language and favourite lines are saved to your personal OASA Live account.")}</p>
+   <p>{words("Οι τελευταίες γραμμές, η αφετηρία και ο προορισμός, οι επιλογές Εξερεύνησης και τα πλαίσια συγχρονίζονται στον λογαριασμό σου. Συνδέσου στον ίδιο λογαριασμό στο κινητό και στον υπολογιστή για να συνεχίσεις.","Your latest routes, journey endpoints, Explore selections and panel choices sync with your account. Sign in to the same account on your phone and computer to continue where you left off.")}</p>
    <p role="status">{account.syncStatus==="saved"?words("✓ Οι προτιμήσεις συγχρονίστηκαν","✓ Preferences synced"):account.syncStatus==="offline"?words("Δεν έγινε συγχρονισμός. Οι αλλαγές παραμένουν σε αυτή τη συσκευή.","Sync unavailable. Changes remain on this device."):words("Συγχρονισμός…","Syncing…")}</p>
    {#if account.syncStatus==="offline"}<button class="secondary wide" onclick={()=>account.retry()}>{words("Νέα προσπάθεια συγχρονισμού","Retry sync")}</button>{/if}
    <button class="primary wide" onclick={()=>{if(account.deletionPending)deleteStep=true;else close()}}>{account.deletionPending?words("Ολοκλήρωση διαγραφής","Finish account deletion"):words("Πίσω στον χάρτη","Back to the map")}</button><button class="secondary wide" disabled={account.busy} onclick={()=>account.logout()}>{words("Αποσύνδεση","Sign out")}</button>
@@ -51,7 +51,7 @@
   {:else}
    <p class="eyebrow">{words("ΟΙ ΚΑΘΗΜΕΡΙΝΕΣ ΣΟΥ ΔΙΑΔΡΟΜΕΣ","YOUR EVERYDAY JOURNEYS")}</p>
    <h1 id="account-title">{required?words("Συνδέσου για να συνεχίσεις","Sign in to keep exploring"):register?words("Οι διαδρομές σου, παντού.","Your journeys, everywhere."):words("Καλώς επέστρεψες","Welcome back")}</h1>
-   <p id="account-intro">{required?words("Χρησιμοποίησες τις δύο δωρεάν δοκιμές σε αυτή τη συσκευή. Δημιούργησε δωρεάν λογαριασμό ή συνδέσου για να συνεχίσεις.","You’ve used the two previews on this device. Create a free account or sign in to continue."):words("Κράτησε τη γλώσσα και τις αγαπημένες γραμμές σου σε κάθε συσκευή.","Keep your language and favourite lines on every device.")}</p>
+   <p id="account-intro">{required?words("Χρησιμοποίησες τις δύο δωρεάν δοκιμές σε αυτή τη συσκευή. Δημιούργησε δωρεάν λογαριασμό ή συνδέσου για να συνεχίσεις.","You’ve used the two previews on this device. Create a free account or sign in to continue."):words("Συνέχισε με τις αποθηκευμένες επιλογές σου σε κάθε συσκευή.","Continue with your saved choices on every device.")}</p>
    <div class="tabs" role="group" aria-label={words("Τρόπος πρόσβασης","Account access")}><button type="button" aria-pressed={!register} onclick={()=>{register=false;account.error="";account.message=""}}>{words("Σύνδεση","Sign in")}</button><button type="button" aria-pressed={register} onclick={()=>{register=true;account.error="";account.message=""}}>{words("Εγγραφή","Register")}</button></div>
    {#if register}
     <fieldset class="preferred-language"><legend>{words("Ποια γλώσσα προτιμάς;","Which language do you prefer?")}</legend>
@@ -69,7 +69,7 @@
     {#if register}<p class="hint" id="password-help">{words("Τουλάχιστον 10 χαρακτήρες. Θα σου στείλουμε email επιβεβαίωσης πριν συνεχίσεις.","At least 10 characters. We’ll email a verification link before you can continue.")}</p>{:else}<button class="link forgot" type="button" disabled={account.busy} onclick={()=>{if(email.trim())void account.reset(email.trim());else account.error=words("Συμπλήρωσε πρώτα το email σου.","Enter your email address first.")}}>{words("Ξέχασες τον κωδικό;","Forgot password?")}</button>{/if}
     <button class="primary wide" type="submit" disabled={account.busy}>{account.busy?words("Περίμενε…","Please wait…"):register?words("Δημιουργία δωρεάν λογαριασμού","Create my free account"):words("Σύνδεση","Sign in")}</button>
    </form>
-   <p class="hint privacy">{words("Ο λογαριασμός σου ανήκει αποκλειστικά στο OASA Live. Αποθηκεύουμε τη γλώσσα και τις αγαπημένες γραμμές σου· όχι την τοποθεσία ή τις διαδρομές σου.","Your account belongs only to OASA Live. We save your language and favourite lines, not your location or journey history.")}</p>
+   <p class="hint privacy">{words("Ο λογαριασμός OASA Live αποθηκεύει τη γλώσσα, τα αγαπημένα και τις τελευταίες επιλογές σου, μαζί με τις επιλεγμένες τοποθεσίες διαδρομής. Δεν αποθηκεύουμε τις κινήσεις GPS ή ιστορικό διαδρομών.","Your OASA Live account stores your language, favourites and latest choices, including chosen journey locations. We do not store your live GPS movements or a history of journeys.")}</p>
    {#if !required}<button class="link wide" onclick={close}>{words("Συνέχεια δοκιμής χωρίς σύνδεση","Continue preview without signing in")}</button>{/if}
   {/if}
   <div aria-live="polite" role="status">{#if account.message}<p class="notice">{account.message}</p>{/if}</div>

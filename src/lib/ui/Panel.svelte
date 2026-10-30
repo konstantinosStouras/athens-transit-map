@@ -16,7 +16,7 @@
   import VehicleType from "./VehicleType.svelte";
   import { trafficTileTemplate } from "../traffic";
 
-  let { app, install, onaccount, signedIn }: { app: AppState; install: InstallState; onaccount: () => void; signedIn: boolean } = $props();
+  let { app, install, onaccount, signedIn, syncStatus }: { app: AppState; install: InstallState; onaccount: () => void; signedIn: boolean; syncStatus: "loading" | "saved" | "saving" | "offline" } = $props();
 
   // Phones start compact: the map matters more than the stats at a bus stop.
   let collapsed = $state(matchMedia("(max-width: 719px)").matches);
@@ -188,7 +188,10 @@
     <button type="button" aria-expanded={installHelp} aria-controls="install-guide" onclick={() => installHelp = !installHelp}>{locale.language === "en" ? "Install app" : "Εγκατάσταση εφαρμογής"}</button>
   </div>
   </div>
-  <p>{locale.language === "en" ? (app.choicesSaved ? "Your choices are saved on this device." : "This browser cannot save your choices.") : (app.choicesSaved ? "Οι επιλογές αποθηκεύονται σε αυτή τη συσκευή." : "Ο browser δεν μπορεί να αποθηκεύσει τις επιλογές.")}</p>
+  <p role="status">{signedIn
+    ? (locale.language === "en" ? (syncStatus === "saved" ? "Your choices are synced across your devices." : syncStatus === "offline" ? "Sync unavailable. Open Account to retry." : "Syncing your choices…") : (syncStatus === "saved" ? "Οι επιλογές συγχρονίστηκαν στις συσκευές σου." : syncStatus === "offline" ? "Ο συγχρονισμός δεν είναι διαθέσιμος. Άνοιξε τον Λογαριασμό για νέα προσπάθεια." : "Συγχρονισμός επιλογών…"))
+    : (locale.language === "en" ? (app.choicesSaved ? "Your choices are saved on this device." : "This browser cannot save your choices.") : (app.choicesSaved ? "Οι επιλογές αποθηκεύονται σε αυτή τη συσκευή." : "Ο browser δεν μπορεί να αποθηκεύσει τις επιλογές."))}</p>
+  {#if signedIn}<p>{locale.language === "en" ? "Clearing choices also resets them on your other devices. Favourites are kept." : "Η διαγραφή επιλογών ισχύει και στις άλλες συσκευές σου. Τα αγαπημένα διατηρούνται."}</p>{/if}
   <button type="button" onclick={() => app.clearChoices()}>{locale.language === "en" ? "Clear saved choices and start again" : "Διαγραφή επιλογών και νέα αρχή"}</button>
   <p class="menu-label">{locale.language === "en" ? "News and feedback" : "Νέα και σχόλια"}</p>
   <nav class="shortcuts" aria-label={locale.language === "en" ? "About and feedback" : "Νέα και σχόλια"}>

@@ -7,7 +7,8 @@ service cloud.firestore {
    allow create, update: if owner()
     && !exists(/databases/$(database)/documents/accountDeletions/$(uid))
     && request.resource.data.keys().hasAll(['language', 'favorites', 'updatedAt'])
-    && request.resource.data.keys().hasOnly(['language', 'favorites', 'updatedAt'])
+    && request.resource.data.keys().hasOnly(['language', 'favorites', 'choices', 'updatedAt'])
+    && (!('choices' in request.resource.data) || (request.resource.data.choices is string && request.resource.data.choices.size() <= 120000))
     && request.resource.data.language in ['el', 'en']
     && request.resource.data.favorites is list
     && request.resource.data.favorites.size() <= 200

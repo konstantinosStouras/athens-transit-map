@@ -4,12 +4,12 @@ export const CHOICES_KEY = "oasa-choices-v1";
 export interface JourneyEnd { text: string; place: Place | null }
 export interface JourneyChoices { from: JourneyEnd; to: JourneyEnd; n: number; picked: string | null }
 export interface Choices {
-  version: 1; selected: string[]; focus: Record<string, string[]>; panelHidden: boolean;
+  version: 1; selected: string[]; metroLines: string[]; stationsOn: boolean; focus: Record<string, string[]>; panelHidden: boolean;
   panelView: "main" | "trip" | "rail" | "stops"; stops: { query: string; radius: number; selected: { name: string; lat: number; lon: number } | null }; journey: JourneyChoices;
   rail: { mode: string; station: string; suburbanStation: string; train: string | null };
 }
 export const emptyJourney = (): JourneyChoices => ({ from: { text: "", place: null }, to: { text: "", place: null }, n: 3, picked: null });
-export const emptyChoices = (): Choices => ({ version: 1, selected: [], focus: {}, panelHidden: false, panelView: "main", stops: { query: "", radius: 500, selected: null }, journey: emptyJourney(),
+export const emptyChoices = (): Choices => ({ version: 1, selected: [], metroLines: [], stationsOn: false, focus: {}, panelHidden: false, panelView: "main", stops: { query: "", radius: 500, selected: null }, journey: emptyJourney(),
   rail: { mode: "M1", station: "", suburbanStation: "", train: null } });
 const obj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const str = (v: unknown): v is string => typeof v === "string" && v.length <= 500;
@@ -28,6 +28,8 @@ function end(v: unknown): JourneyEnd {
 export function parseChoices(value: unknown): Choices {
   const c = emptyChoices();
   if (!obj(value) || value.version !== 1) return c;
+  if (ids(value.metroLines)) c.metroLines = [...new Set(value.metroLines)].filter(id => ["M1", "M2", "M3", "T6", "T7"].includes(id));
+  c.stationsOn = value.stationsOn === true;
   if (ids(value.selected)) c.selected = [...new Set(value.selected)].slice(0, MAX_LINES);
   if (obj(value.focus)) c.focus = Object.fromEntries(Object.entries(value.focus).flatMap(([k, v]) => c.selected.includes(k) && ids(v) && v.length ? [[k, v]] : []));
   c.panelHidden = value.panelHidden === true;
@@ -52,7 +54,12 @@ export function parseChoices(value: unknown): Choices {
   return c;
 }
 export function readChoices(): Choices {
-  try { return parseChoices(JSON.parse(localStorage.getItem(CHOICES_KEY) ?? "null")); } catch { return emptyChoices(); }
+  try {
+    const value = JSON.parse(localStorage.getItem(CHOICES_KEY) ?? "null");
+    return parseChoices({ ...(obj(value) ? value : { version: 1 }),
+      metroLines: obj(value) && "metroLines" in value ? value.metroLines : JSON.parse(localStorage.getItem("metroLines") ?? "[]"),
+      stationsOn: obj(value) && "stationsOn" in value ? value.stationsOn : JSON.parse(localStorage.getItem("stationsOn") ?? "false") });
+  } catch { return emptyChoices(); }
 }
 export function saveChoices(c: Choices): boolean {
   try { localStorage.setItem(CHOICES_KEY, JSON.stringify(c)); return true; } catch { return false; }
@@ -65,4 +72,17 @@ export function resolveChoices(c: Choices, search: string): Choices {
   const selected = selectionIds(search).slice(0, MAX_LINES);
   // Explicit shared links take priority. Refreshing the same link retains the journey.
   return selected.join() === c.selected.join() ? c : { ...c, selected, focus: {}, journey: emptyJourney(), panelView: "main", panelHidden: false };
+}
+
+export const MAX_CLOUD_CHOICES = 120000;
+// A JSON string supports the nested coordinate arrays used by the journey planner.
+export function encodeChoices(value: Choices): string {
+  const encoded = JSON.stringify(parseChoices(value));
+  if (encoded.length > MAX_CLOUD_CHOICES) throw new Error("Saved choices exceed the sync limit");
+  return encoded;
+}
+export function decodeChoices(value: unknown): Choices | null {
+  if (typeof value !== "string" || value.length > MAX_CLOUD_CHOICES) return null;
+  try { const data: unknown = JSON.parse(value); return obj(data) && data.version === 1 ? parseChoices(data) : null; }
+  catch { return null; }
 }
