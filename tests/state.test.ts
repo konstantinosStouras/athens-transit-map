@@ -380,20 +380,20 @@ describe("AppState lines without vehicles", () => {
     ({ line, updated_at, next_update_at: updated_at + 30, vehicles });
   const car = [{ id: "1", variant: null }];
 
-  it("removes a picked line after two updates with no vehicles, with its focus and selection, and says so", () => {
+  it("keeps picked lines and direction focus through repeated empty service updates", () => {
     const app = new AppState();
     app.selected = ["040", "550"];
     app.setFocus("040", ["5513"]);
     hook(app).onData("040", feed("040", 100));
     expect(app.selected).toEqual(["040", "550"]);
     hook(app).onData("040", feed("040", 130));
-    expect(app.selected).toEqual(["550"]);
-    expect(app.focus).toEqual({});
-    expect(app.live["040"]).toBeUndefined();
-    expect(app.notice).toContain("040");
+    expect(app.selected).toEqual(["040", "550"]);
+    expect(app.focus).toEqual({ "040": ["5513"] });
+    expect(app.live["040"].vehicles).toEqual([]);
+    expect(app.notice).toBeNull();
   });
 
-  it("needs two empty updates in a row: one with vehicles in between starts over", () => {
+  it("keeps selected lines when service alternates between empty and active", () => {
     const app = new AppState();
     app.selected = ["040"];
     hook(app).onData("040", feed("040", 100));
@@ -402,7 +402,7 @@ describe("AppState lines without vehicles", () => {
     expect(app.selected).toEqual(["040"]);
   });
 
-  it("counts an update once: the same data again, or older, is not a second one", () => {
+  it("keeps selections when repeated or older empty snapshots arrive", () => {
     const app = new AppState();
     app.selected = ["040"];
     hook(app).onData("040", feed("040", 100));
@@ -411,7 +411,7 @@ describe("AppState lines without vehicles", () => {
     expect(app.selected).toEqual(["040"]);
   });
 
-  it("a line taken off and picked again starts counting from zero", () => {
+  it("keeps a line explicitly picked again even when its service is empty", () => {
     const app = new AppState();
     app.toggleLine("040");
     hook(app).onData("040", feed("040", 100));
@@ -433,7 +433,7 @@ describe("AppState lines without vehicles", () => {
     expect(app.selected).toEqual(["Α1"]);
   });
 
-  it("an older copy of the feed arriving late is not counted, with or without vehicles", () => {
+  it("keeps selected routes through old and new empty snapshots", () => {
     const app = new AppState();
     app.selected = ["040"];
     hook(app).onData("040", feed("040", 200, car));
@@ -442,7 +442,7 @@ describe("AppState lines without vehicles", () => {
     expect(app.selected).toEqual(["040"]);
     hook(app).onData("040", feed("040", 230));
     hook(app).onData("040", feed("040", 260));
-    expect(app.selected).toEqual([]);
+    expect(app.selected).toEqual(["040"]);
   });
 
   it("a late answer for a line that is no longer picked changes nothing", () => {
@@ -454,7 +454,7 @@ describe("AppState lines without vehicles", () => {
     expect(app.notice).toBeNull();
   });
 
-  it("stops the stop alert of a removed line, and ends it when none is left", () => {
+  it("retains selected lines and their alert through temporary service gaps", () => {
     const app = new AppState();
     app.selected = ["040", "550"];
     (app as unknown as { alertSpec: unknown }).alertSpec = { n: 2, until: Date.now() / 1000 + 3600, label: "Χ",
@@ -462,19 +462,18 @@ describe("AppState lines without vehicles", () => {
     expect(app.alert?.lines.map(l => l.line)).toEqual(["040", "550"]);
     hook(app).onData("040", feed("040", 100));
     hook(app).onData("040", feed("040", 130));
-    expect(app.alert?.lines.map(l => l.line)).toEqual(["550"]);
+    expect(app.alert?.lines.map(l => l.line)).toEqual(["040", "550"]);
     hook(app).onData("550", feed("550", 100));
     hook(app).onData("550", feed("550", 130));
-    expect(app.alert).toBeNull();
+    expect(app.alert?.lines.map(l => l.line)).toEqual(["040", "550"]);
   });
 
-  it("two lines going empty together give one notice naming both", () => {
+  it("keeps both routes without a removal notice when both become empty", () => {
     const app = new AppState();
     app.selected = ["040", "550"];
     for (const t of [100, 130]) for (const l of app.selected.slice()) hook(app).onData(l, feed(l, t));
-    expect(app.selected).toEqual([]);
-    expect(app.notice).toContain("040");
-    expect(app.notice).toContain("550");
+    expect(app.selected).toEqual(["040", "550"]);
+    expect(app.notice).toBeNull();
   });
 });
 
