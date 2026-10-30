@@ -18,8 +18,6 @@ import type { CityLive, CityVehicle, LineInfo, LineLive, LineStatic, Status, Veh
 import type { WalkingLeg } from "./walking";
 
 export const STALE_S = 120;
-// A picked line whose feed has no vehicles for this many updates in a row is taken off the map.
-const EMPTY_DROPS = 2;
 const STATUS_EVERY_MS = 60_000;
 const TILE_TIMEOUT_MS = 15_000;
 
@@ -316,7 +314,6 @@ export class AppState {
   // an old copy. The poller is kept, so its pacing survives.
   private closeLine(id: string) {
     this.pollers.get(id)?.stop();
-    this.empty.delete(id);
     this.setFocus(id, null);
     const { [id]: _, ...rest } = this.live;
     this.live = rest;
@@ -648,22 +645,7 @@ export class AppState {
     this.live = { ...this.live, [id]: d };
     const s = this.selection;
     if (s?.kind === "vehicle" && s.line === id && !d.vehicles.some(v => v.id === s.id)) this.clearSelection();
-    this.countEmpty(id, d);
-  }
-
-  // Updates in a row with no vehicles, per picked line. An update counts once, by its time: the same
-  // data again, or an older cached copy arriving late, is ignored (also when it has vehicles).
-  private empty = new Map<string, { n: number; at: number }>();
-  private countEmpty(id: string, d: LineLive) {
-    if (!this.selected.includes(id)) return;   // not picked: the line shown from the city layer, or a late answer
-    const e = this.empty.get(id) ?? { n: 0, at: -Infinity };
-    if (!(d.updated_at > e.at)) return;
-    const n = d.vehicles.length ? 0 : e.n + 1;
-    this.empty.set(id, { n, at: d.updated_at });
-    if (n >= EMPTY_DROPS) {
-      this.dropLine(id);
-      this.say(`Η γραμμή ${id} δεν έχει οχήματα τώρα: αφαιρέθηκε.`);
-    }
+    // Empty service is temporary; keep the user’s selected route and saved choice.
   }
 
   // Take a picked line off the map by itself (not a tap of the user): its stop alert, if any, follows
