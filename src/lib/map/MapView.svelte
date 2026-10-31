@@ -882,7 +882,7 @@
   // The trip planner's start (A) and end (B).
   $effect(() => {
     const ends = app.tripEnds, m = map;
-    if (!ends || !m) return;
+    if (!ends || !m || app.tripLegs.length) return;
     const pins = ([["from", "A"], ["to", "B"]] as const).map(([k, label]) => {
       const el = document.createElement("div");
       el.className = "trip-end";
