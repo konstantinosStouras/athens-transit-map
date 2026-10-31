@@ -1,4 +1,5 @@
 import { displayName } from "./transit-names";
+import { stationName } from "./station-search";
 import type { Language } from "./translate";
 // Metro, ISAP and tram: a static layer (no live data exists). public/metro.json comes from
 // scripts/metro.ts and scripts/metro-osm.ts (track shapes). Stations always show; a line's track
@@ -35,7 +36,8 @@ export function termini(data: MetroData, id: string, language: Language = "el"):
 export async function loadMetro(): Promise<MetroData> {
   const r = await fetch(`${import.meta.env.BASE_URL}metro.json`);
   if (!r.ok) throw new Error(`metro.json: HTTP ${r.status}`);
-  return r.json();
+  const data: MetroData = await r.json();
+  return { ...data, stations: data.stations.map(s => ({ ...s, name_en: stationName(s, "en") })) };
 }
 
 // The pinned lines' tracks and every station; `sel` marks the tapped one.

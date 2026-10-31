@@ -1,5 +1,6 @@
 <script lang="ts">
   import { locale } from "../i18n.svelte";
+  import { stationName } from "../station-search";
   import { parseBoard, railBoardUrl, railJSON, type DepartureBoard } from "../rail-departures";
   let { stop, suburban = false, line }: { stop: string; suburban?: boolean; line?: string } = $props();
   let board = $state<DepartureBoard | null>(null);
@@ -41,7 +42,7 @@
     {#if !departures.length}<p>{en ? "No upcoming departures returned." : "Δεν επιστράφηκαν επόμενες αναχωρήσεις."}</p>{/if}
     <ul>
       {#each departures as d}
-        <li><strong>{d.line ?? d.train}</strong> → {d.headsign ?? d.to} <b>{d.t}</b>
+        <li><strong>{d.line ?? d.train}</strong> → {stationName({ name: d.headsign ?? d.to }, locale.language)} <b>{d.t}</b>
           {#if suburban}
             {#if d.from}<small>{en ? "From" : "Από"} {d.from}</small>{/if}
             <small>{status(d.status)} · {d.delay_min == null ? (en ? "Delay unknown" : "Άγνωστη καθυστέρηση") : `+${d.delay_min} ${en ? "min" : "λεπτά"}`}{#if d.platform} · {en ? "Platform" : "Αποβάθρα"} {d.platform}{/if}</small>

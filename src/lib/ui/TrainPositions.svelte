@@ -1,5 +1,6 @@
 <script lang="ts">
   import { locale } from "../i18n.svelte";
+  import { stationName } from "../station-search";
   import { API_BASE } from "../config";
   import { railJSON } from "../rail-departures";
   import { trainPositions, type TrainPosition } from "../train-positions";
@@ -31,7 +32,7 @@
   });
   $effect(() => {
     const train = trains.find(t => t.id === app.railChoices.train && t.at >= app.now / 1000 - 120);
-    app.railPosition = train ? { point: train.point, label: train.line + " " + train.id + " → " + train.destination + " · " +
+    app.railPosition = train ? { point: train.point, label: train.line + " " + train.id + " → " + stationName({ name: train.destination }, locale.language) + " · " +
       (train.estimated ? (en ? "Timetable estimate, not GPS" : "Εκτίμηση προγράμματος, όχι GPS") : "GPS") } : null;
   });
   function show(t: TrainPosition) { app.railChoices.train = t.id; app.panelHidden = true; app.fitPoints([t.point]); }
@@ -48,8 +49,8 @@
     {#if trains.some(t => t.indicative)}<p>{en ? "Indicative only: the source timetable has expired." : "Μόνο ενδεικτικά: το πρόγραμμα της πηγής έχει λήξει."}</p>{/if}
     <ul>{#each trains as t (t.id)}<li>
       <button type="button" aria-pressed={app.railChoices.train === t.id} onclick={() => show(t)}>
-        <strong>{t.line} {t.id} → {t.destination}</strong>
-        <span>{en ? "Next" : "Επόμενη"}: {t.next || "—"}</span>
+        <strong>{t.line} {t.id} → {stationName({ name: t.destination }, locale.language)}</strong>
+        <span>{en ? "Next" : "Επόμενη"}: {stationName({ name: t.next || "—" }, locale.language)}</span>
         {#if !t.estimated}<span>{t.delay == null ? (en ? "Delay unknown" : "Άγνωστη καθυστέρηση") : t.delay + (en ? " min delay" : " λεπτά καθυστέρηση")}</span>{/if}
         <span>{en ? "Show on map" : "Εμφάνιση στον χάρτη"} · {t.estimated ? (en ? "Estimate" : "Εκτίμηση") : "GPS"}</span>
       </button>
