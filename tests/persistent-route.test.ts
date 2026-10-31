@@ -13,12 +13,14 @@ describe("saved route selections", () => {
     vi.stubGlobal("location", { pathname: "/", search: "", hash: "" });
     vi.stubGlobal("history", { state: null, replaceState: vi.fn() });
     const app = new AppState();
+    app.recenterLocation = vi.fn();
     app.selected = ["040"]; app.metroLines = ["M1"]; app.focus = { "040": ["out"] };
     app.panelHidden = true; app.panelView = "trip";
     app.journey.from = { text: "Home", place: null };
     app.railChoices.station = "Syntagma";
     app.persistChoices();
     app.clearChoices();
+    expect(app.recenterLocation).toHaveBeenCalledOnce();
     app.persistChoices();
     const reopened = new AppState();
     expect(reopened.selected).toEqual([]);
@@ -47,5 +49,8 @@ it("enables automatic local saving at startup and restores incoming account choi
  const app=new AppState();vi.spyOn(app,"retryLines").mockResolvedValue();vi.spyOn(app,"refreshStatus").mockResolvedValue();vi.spyOn(app,"loadMetro").mockImplementation(()=>{});
  app.init();expect(app.choicesReady).toBe(true);
  const c=emptyChoices();c.metroLines=["M3"];c.panelHidden=true;c.panelView="rail";c.rail.station="Syntagma";
+ app.recenterLocation=vi.fn();
  app.applyChoices(c);expect(app.snapshotChoices()).toEqual(c);expect(new AppState().snapshotChoices()).toEqual(c);expect(app.choicesRevision).toBe(1);
+ expect(app.recenterLocation).not.toHaveBeenCalled();
+ app.applyChoices(emptyChoices());expect(app.recenterLocation).toHaveBeenCalledOnce();expect(app.snapshotChoices()).toEqual(emptyChoices());
 });
