@@ -10,17 +10,18 @@
   const en = $derived(locale.language === "en");
   let stationQuery = $state("");
   function chooseStation(name: string) { app.railChoices.station = name; stationQuery = ""; }
-  const stations = $derived((app.metro?.stations ?? []).filter(s => s.lines.includes(app.railChoices.mode)).sort((a, b) => nameOf(a).localeCompare(nameOf(b), locale.language)));
+  const stations = $derived((app.metro?.stations ?? []).filter(s => app.railChoices.mode === "station" || s.lines.includes(app.railChoices.mode)).sort((a, b) => nameOf(a).localeCompare(nameOf(b), locale.language)));
   const matches = $derived(searchStations(stations, stationQuery));
   $effect(() => { app.loadMetro(); });
   function changeMode(value: string) { stationQuery = ""; app.railChoices.mode = value; app.railChoices.station = ""; app.railChoices.train = null; }
 </script>
 
 <section class="explorer" aria-label={en ? "Rail departures" : "Αναχωρήσεις σιδηροδρόμων"}>
-  <h3>{en ? "ISAP, metro, tram & suburban rail" : "ΗΣΑΠ, μετρό, τραμ & προαστιακός"}</h3>
-  <p>{en ? "Buses and trolleybuses have live vehicle positions in the line search. Choose a rail service below for its available departures." : "Λεωφορεία και τρόλεϊ έχουν ζωντανές θέσεις οχημάτων στην αναζήτηση γραμμών. Διάλεξε μέσο παρακάτω για τις διαθέσιμες αναχωρήσεις."}</p>
+  <h3>{app.railChoices.mode === "station" ? stationName({ name: app.railChoices.station }, locale.language) : (en ? "ISAP, metro, tram & suburban rail" : "ΗΣΑΠ, μετρό, τραμ & προαστιακός")}</h3>
+  {#if app.railChoices.mode !== "station"}<p>{en ? "Buses and trolleybuses have live vehicle positions in the line search. Choose a rail service below for its available departures." : "Λεωφορεία και τρόλεϊ έχουν ζωντανές θέσεις οχημάτων στην αναζήτηση γραμμών. Διάλεξε μέσο παρακάτω για τις διαθέσιμες αναχωρήσεις."}</p>{/if}
   <label>{en ? "Transport service" : "Μέσο μεταφοράς"}
     <select value={app.railChoices.mode} onchange={e => changeMode(e.currentTarget.value)}>
+      <option value="station">{en ? "All services at a station" : "Όλες οι γραμμές του σταθμού"}</option>
       <option value="M1">{en ? "ISAP · Line 1" : "ΗΣΑΠ · Γραμμή 1"}</option>
       <option value="M2">{en ? "Metro · Line 2" : "Μετρό · Γραμμή 2"}</option>
       <option value="M3">{en ? "Metro · Line 3" : "Μετρό · Γραμμή 3"}</option>
@@ -47,14 +48,15 @@
     <label>{en ? "Station" : "Σταθμός"}
       <select bind:value={app.railChoices.station}><option value="">{en ? "Choose a station" : "Διάλεξε σταθμό"}</option>{#each stations as s}<option value={s.name}>{nameOf(s)}</option>{/each}</select>
     </label>
-    <button type="button" aria-pressed={app.metroLines.includes(app.railChoices.mode)} onclick={() => {
+    {#if app.railChoices.mode !== "station"}<button type="button" aria-pressed={app.metroLines.includes(app.railChoices.mode)} onclick={() => {
       const shown = app.metroLines.includes(app.railChoices.mode);
       app.toggleMetroLine(app.railChoices.mode);
       if (!shown) { app.panelHidden = true; app.setStationsOn(true); app.fitMetro([app.railChoices.mode]); }
     }}>{en ? (app.metroLines.includes(app.railChoices.mode) ? "Hide route from map" : "Show route and stations on map") : (app.metroLines.includes(app.railChoices.mode) ? "Απόκρυψη γραμμής από τον χάρτη" : "Εμφάνιση γραμμής και σταθμών στον χάρτη")}</button>
-    {#if app.railChoices.station}<RailDepartures stop={app.railChoices.station} line={app.railChoices.mode} />{/if}
+    {/if}
+    {#if app.railChoices.station}<RailDepartures stop={app.railChoices.station} line={app.railChoices.mode === "station" ? undefined : app.railChoices.mode} />{/if}
   {/if}
-  <details><summary>{en ? "Trains on the map" : "Συρμοί στον χάρτη"}</summary><TrainPositions {app} mode={app.railChoices.mode} /></details>
+  {#if app.railChoices.mode !== "station"}<details><summary>{en ? "Trains on the map" : "Συρμοί στον χάρτη"}</summary><TrainPositions {app} mode={app.railChoices.mode} /></details>{/if}
 </section>
 <style>
   .explorer { padding: 12px; max-height: 60vh; overflow: auto; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; }

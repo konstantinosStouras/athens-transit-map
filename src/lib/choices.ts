@@ -48,7 +48,7 @@ export function parseChoices(value: unknown): Choices {
   }
   if (obj(value.rail)) {
     const r = value.rail;
-    c.rail = { mode: ["M1", "M2", "M3", "T6", "T7", "suburban"].includes(String(r.mode)) ? String(r.mode) : "M1",
+    c.rail = { mode: ["M1", "M2", "M3", "T6", "T7", "suburban", "station"].includes(String(r.mode)) ? String(r.mode) : "M1",
       station: str(r.station) ? r.station : "", suburbanStation: str(r.suburbanStation) ? r.suburbanStation : "", train: str(r.train) ? r.train : null };
   }
   return c;

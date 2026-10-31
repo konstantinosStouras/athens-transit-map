@@ -67,7 +67,6 @@
   let owned = new Set<string>();       // detailed lines with data: drawn as DOM markers
   let fadedKeys = new Set<string>();   // vehicles of an unknown direction under a direction focus
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  const STILL_TRAIL_S = 1;   // motion off: the trail of a move to a new fix fades over this
 
   // Route geometry per variant, built once per static file.
   const routes = new WeakMap<Variant, RouteGeom>();
@@ -259,8 +258,8 @@
     addLayers(m);
     addMeAcc(m);
     if (me) showAcc(m, me.fix);
-    nextDue = 0;   // the city layer and the trails start empty: draw them now
-    cityWasEmpty = trailsWereEmpty = true;
+    nextDue = 0;   // the city layer starts empty: draw it now
+    cityWasEmpty = true;
     started = true;
     loaded = true;
   }
@@ -292,21 +291,6 @@
     addMetroLayers(m);
     addCityLayers(m);
     for (const id of ["metro-station", "metro-label"]) m.moveLayer(id);
-    // Trails of corrections (the route a vehicle glided along) and, with motion off, of moves to a
-    // new fix. Always under the vehicle: city dots' trails under the dots, detailed lines' trails
-    // over the route lines (their vehicles are DOM markers, above the map).
-    // A correction back is drawn apart: thin, grey and dashed, so it does not read as the bus reversing.
-    m.addSource("trails", { type: "geojson", data: EMPTY });
-    const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#0071e3";
-    const trail = (id: string, dom: boolean, before?: string) => {
-      m.addLayer({ id, type: "line", source: "trails",
-        filter: ["all", ["==", ["get", "dom"], dom], ["!", ["to-boolean", ["get", "back"]]]], layout: { "line-join": "round", "line-cap": "round" },
-        paint: { "line-color": accent, "line-width": 8, "line-opacity": ["*", 0.55, ["get", "alpha"]] } }, before);
-      m.addLayer({ id: `${id}-back`, type: "line", source: "trails",
-        filter: ["all", ["==", ["get", "dom"], dom], ["to-boolean", ["get", "back"]]], layout: { "line-join": "round" },
-        paint: { "line-color": "#80868b", "line-width": 3, "line-dasharray": [1.5, 1.5], "line-opacity": ["*", 0.9, ["get", "alpha"]] } }, before);
-    };
-    trail("trails-city", false, "city-dot");
     m.addImage("route-arrow", arrowImage(), { pixelRatio: 2 });
     // The detailed lines' routes go under the city vehicles: a city vehicle just selected is still drawn
     // by the city layer while its line loads, and the highlighted route must not cover it.
@@ -336,7 +320,6 @@
       layout: { "symbol-placement": "line", "symbol-spacing": 80, "icon-image": "route-arrow",
         "icon-rotation-alignment": "map", "icon-keep-upright": false, "icon-offset": [0, LANE_PX],
         "icon-allow-overlap": true, "icon-ignore-placement": true } }, under);
-    trail("trails-line", true, under);
     m.addLayer({ id: "stops", type: "circle", source: "stops",
       paint: { "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 3, 16, 6], "circle-color": "#ffffff",
         "circle-stroke-color": ["get", "color"], "circle-stroke-width": 2 } });
@@ -446,10 +429,10 @@
   }
 
   // One frame loop for every moving dot. It runs as often as needed for steps of under half a
-  // pixel at 20 m/s (zoomed out: once a second), faster during corrections and trails; nothing while
+  // pixel at 20 m/s (zoomed out: once a second), faster during position corrections; nothing while
   // the tab is hidden. Off-screen city vehicles are not stepped: they snap when they come back.
-  // With motion off, every vehicle is drawn at its last fix; a move to a new fix leaves a trail.
-  let raf = 0, nextDue = 0, cityWasEmpty = true, trailsWereEmpty = true;
+  // With motion off, every vehicle is drawn at its last fix; new fixes update the marker directly.
+  let raf = 0, nextDue = 0, cityWasEmpty = true;
   function frame() {
     raf = requestAnimationFrame(frame);
     const m = map;
@@ -465,7 +448,6 @@
     }
     let fixing = false;
     const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
-    const trails: GeoJSON.Feature<GeoJSON.LineString>[] = [];
     const s = app.selection, selKey = s?.kind === "vehicle" ? `${s.line}/${s.id}` : null, only = app.only;
     const still = !app.motion;
     if (!still) fleet.spacing(now);
@@ -473,28 +455,19 @@
       const dom = owned.has(e.line);
       const shown = e.key === selKey || passes(only, e.cls, now - e.at);
       if (!shown && !dom) continue;
-      const moved = still && !reduced && e.moved && now - e.moved.at < STILL_TRAIL_S ? e.moved : null;
       if (!dom && (!app.cityOn || (cull && (still
-        ? !moved && cull(e.pos)
+        ? cull(e.pos)
         : !e.mover.fixing && cull(e.mover.pos) && cull(e.mover.targetPos(now) ?? e.mover.pos))))) continue;
-      let pos: LngLat, trail: { geom: LngLat[]; alpha: number } | null, back = false, rewind = false;
+      let pos: LngLat, rewind = false;
       if (still) {
         pos = e.pos;
-        trail = moved && { geom: [moved.from, e.pos], alpha: 1 - (now - moved.at) / STILL_TRAIL_S };
       } else {
         e.mover.reduced = reduced;
         const r = e.mover.step(now);
         pos = r.pos;
-        trail = r.trail;
-        back = r.back;
-        rewind = back && r.fx != null;   // gliding back: the dot is drawn faint
+        rewind = r.back && r.fx != null;   // gliding back: the dot is drawn faint
         if (e.mover.fixing) fixing = true;
       }
-      if (moved) fixing = true;
-      // A trail is drawn like its vehicle: not for one filtered out, hidden or dimmed by a selection.
-      const o = dom || !s || app.others === "normal" || e.key === selKey ? 1 : app.others === "dim" ? 0.22 : 0;
-      if (trail && shown && o && trail.geom.length > 1)
-        trails.push({ type: "Feature", geometry: { type: "LineString", coordinates: trail.geom }, properties: { alpha: trail.alpha * o, dom, ...(back && { back }) } });
       if (dom) {
         const d = drawDom(e, pos, still);
         d.wrap.classList.toggle("filtered", !shown);
@@ -514,10 +487,7 @@
       (m.getSource("city") as GeoJSONSource).setData({ type: "FeatureCollection", features });
       cityWasEmpty = !features.length;
     }
-    if (trails.length || !trailsWereEmpty) {
-      (m.getSource("trails") as GeoJSONSource).setData({ type: "FeatureCollection", features: trails });
-      trailsWereEmpty = !trails.length;
-    }
+
     if (me) {
       me.mover.reduced = reduced;
       const r = me.mover.step(Date.now() / 1000);
@@ -532,7 +502,7 @@
         if (needsRecenter(target, center)) m.setCenter(r.pos, { follow: true });
       }
     }
-    // Corrections and trails: 30 fps close up; zoomed out, where they are a few pixels and every frame
+    // Position corrections: 30 fps close up; zoomed out, where they are a few pixels and every frame
     // steps the whole city, 4 fps.
     const idle = Math.min(1000, Math.max(16, (0.5 * mpp / 20) * 1000));
     nextDue = t + (fixing ? Math.min(idle, z >= 13 ? 33 : 250) : idle);
@@ -935,11 +905,11 @@
 
   // New city data, or a change of the lines drawn in detail: hand the vehicles to the fleet.
   $effect(() => {
-    const city = app.city, on = app.cityOn, own = app.cityExclude;
+    const city = app.city, on = app.cityOn && !app.detailLines.length, own = app.cityExclude;
     untrack(() => {
       owned = own;
       fleet.city(on && city ? city.vehicles : [], own, app.serverMs() / 1000);
-      nextDue = 0;   // draw new fixes (and their trails) now
+      nextDue = 0;   // draw new fixes now
       if (loaded && !on) (map!.getSource("city") as GeoJSONSource).setData(EMPTY);
     });
   });
@@ -962,7 +932,7 @@
     m.setFilter("city-heading", filter ? ["all", ["has", "h"], filter] : ["has", "h"]);
     m.setFilter("city-label", filter);
     m.setFilter("city-selected", sel);
-    const vis = app.cityOn ? "visible" : "none";
+    const vis = app.cityOn && !app.detailLines.length ? "visible" : "none";
     for (const id of ["city-dot", "city-label", "city-heading", "city-selected"]) m.setLayoutProperty(id, "visibility", vis);
   });
 
