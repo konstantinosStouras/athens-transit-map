@@ -414,6 +414,16 @@
   }
 
   // Stop camera following without removing or stopping the location dot.
+  async function recenterLocation() {
+    // Reset remounts the panel; measure its final size before positioning the map.
+    await tick();
+    if (!map || !navigator.geolocation) return;
+    follow = true;
+    flyOnFix = !me;
+    if (me) map.easeTo({ center: me.mover.pos, zoom: 17, padding: padding(), duration: 600 });
+    locator.start();
+  }
+
   function locateClick() {
     if (!navigator.geolocation) return;
     if (follow) { stopFollowing(); return; }
@@ -701,11 +711,13 @@
     app.fit = fitTo;
     app.fitPoints = fitPoints;
     app.fitMetro = fitMetro;
+    app.recenterLocation = () => { void recenterLocation(); };
     if (import.meta.env.DEV) Object.assign(window, { __map: m, __fleet: fleet, __doms: doms });
     return () => {
       app.fit = () => {};
       app.fitPoints = () => {};
       app.fitMetro = () => {};
+      app.recenterLocation = () => {};
       cancelAnimationFrame(raf);
       reportSoon.cancel();
       reportFollow.cancel();

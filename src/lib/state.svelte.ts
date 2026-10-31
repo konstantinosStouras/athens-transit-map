@@ -97,7 +97,8 @@ export class AppState {
     this.choicesRevision++;
     this.persistChoices();
     this.writeUrl();
-    if (this.choicesReady) void Promise.allSettled(this.selected.map(fetchLineStatic)).then(() => this.fit(this.selected));
+    if (JSON.stringify(c) === JSON.stringify(emptyChoices())) this.recenterLocation();
+    else if (this.choicesReady) void Promise.allSettled(this.selected.map(fetchLineStatic)).then(() => this.fit(this.selected));
   }
   clearChoices() {
     this.tripGen++;
@@ -121,6 +122,7 @@ export class AppState {
     this.choicesReset++;
     clearSavedChoices();
     this.writeUrl();
+    this.recenterLocation();
   }
   stopRequest = $state.raw<{ name: string; lat: number; lon: number } | null>(null);
   infoOpen = $state(false);
@@ -192,6 +194,8 @@ export class AppState {
   panelHidden = $state(this.savedChoices.panelHidden);
   railPosition = $state.raw<{ point: [number, number]; label: string } | null>(null);
   fitPoints: (points: [number, number][]) => void = () => {};
+  // Each device uses its own location after a local or synced reset.
+  recenterLocation: () => void = () => {};
 
   // Set by MapView: frame the given lines once their shapes are loaded.
   fit: (ids: string[]) => void = () => {};
