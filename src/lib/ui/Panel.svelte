@@ -653,4 +653,8 @@
       max-height: calc(100dvh - 24px - env(safe-area-inset-top)); }
     .stats b { font-size: 16px; }
   }
+  @media (max-width: 719px) and (orientation: landscape) {
+    .panel, .panel.compact { right: auto; width: 42vw; max-width: 42vw; max-height: calc(100dvh - 24px - env(safe-area-inset-top)); }
+    .panel.mobile-collapsed, .panel.mobile-collapsed.compact { max-width: 42vw; }
+  }
 </style>
