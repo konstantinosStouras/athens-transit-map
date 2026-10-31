@@ -3,6 +3,8 @@
   import { tick, type Snippet } from "svelte";
   import { searchLines, searchTramServices } from "../search";
   import { MAX_LINES } from "../selection";
+  import { searchStations, stationName } from "../station-search";
+  import type { MetroStation } from "../metro";
   import type { AppState } from "../state.svelte";
   import VehicleType from "./VehicleType.svelte";
 
@@ -11,7 +13,7 @@
   // onsearch asks the panel to open it, onclose says the search is over (a line was picked, or Escape).
   // tail: buttons of the panel, at the right of the first row (the chips, or the search with no chips).
   let { app, expanded = true, searchOpen = false, onsearch, onclose, ondirections, onrail, tail }:
-    { app: AppState; expanded?: boolean; searchOpen?: boolean; onsearch?: () => void; onclose?: () => void; ondirections: () => void; onrail: (mode: string) => void; tail?: Snippet } = $props();
+    { app: AppState; expanded?: boolean; searchOpen?: boolean; onsearch?: () => void; onclose?: () => void; ondirections: () => void; onrail: (mode: string, station?: string) => void; tail?: Snippet } = $props();
 
   const QUICK = ["040", "550", "Α1", "Χ95", "2"];
 
@@ -23,6 +25,8 @@
 
   const results = $derived(searchLines(app.lines, query));
   const tramResults = $derived(searchTramServices(query));
+  const stationResults = $derived(query.trim() ? searchStations(app.metro?.stations ?? [], query).slice(0, 20) : []);
+  function pickStation(station: MetroStation) { query = ""; open = false; input?.blur(); onclose?.(); onrail("station", station.name); }
   function pickTram(mode: string) { query = ""; open = false; input?.blur(); onclose?.(); onrail(mode); }
   const showInput = true;
 
@@ -65,6 +69,9 @@
     } else if (e.key === "PageDown" || e.key === "PageUp") {
       e.preventDefault();
       move(active + (e.key === "PageDown" ? 8 : -8));
+    } else if (e.key === "Enter" && open && stationResults.length) {
+      e.preventDefault();
+      pickStation(stationResults[0]);
     } else if (e.key === "Enter" && open && tramResults.length) {
       e.preventDefault();
       pickTram(tramResults[0]);
@@ -103,14 +110,14 @@
     enterkeyhint="search"
     autocomplete="off"
     spellcheck="false"
-    placeholder={full ? tr("Έως 5 γραμμές ταυτόχρονα") : (locale.language === "en" ? "Search lines" : "Αναζήτηση γραμμής")}
+    placeholder={locale.language === "en" ? "Search lines or stations" : "Γραμμές ή σταθμοί"}
     role="combobox"
-    aria-label={tr("Αναζήτηση γραμμής")}
+    aria-label={locale.language === "en" ? "Search lines or stations" : "Αναζήτηση γραμμών ή σταθμών"}
     aria-expanded={open}
     aria-controls="line-list"
     aria-autocomplete="list"
     aria-activedescendant={open && results[active] ? `line-opt-${active}` : undefined}
-    onfocus={() => { open = true; active = 0; }}
+    onfocus={() => { open = true; active = 0; app.loadMetro(); }}
     oninput={() => { open = true; active = 0; }}
     {onkeydown}
   />
@@ -165,6 +172,13 @@
   {/if}
 
   {#if open && showInput}
+    {#if stationResults.length}
+      <div class="station-results" aria-label={locale.language === "en" ? "Stations" : "Σταθμοί"}>
+        {#each stationResults as station}
+          <button type="button" onclick={() => pickStation(station)}><strong>{stationName(station, locale.language)}</strong><br />{station.lines.join(" · ")} · {locale.language === "en" ? "Station departures" : "Αναχωρήσεις σταθμού"}</button>
+        {/each}
+      </div>
+    {/if}
     {#if tramResults.length}
       <div class="tram-results" aria-label={locale.language === "en" ? "Tram schedules" : "Δρομολόγια τραμ"}>
         {#each tramResults as mode}
@@ -177,7 +191,7 @@
         <li class="empty">{tr("Δεν φορτώθηκε η λίστα γραμμών. Δοκίμασε ξανά σε λίγο.")}</li>
       {:else if !app.lines.length}
         <li class="empty">{tr("Φόρτωση γραμμών…")}</li>
-      {:else if !results.length && !tramResults.length && query.trim() !== "320"}
+      {:else if !results.length && !tramResults.length && !stationResults.length && query.trim() !== "320"}
         <li class="empty">{locale.language === "en" ? "No matching line in the current data." : "Δεν υπάρχει αντίστοιχη γραμμή στα τρέχοντα δεδομένα."}</li>
       {/if}
       {#if query.trim() === "320" && app.lines.length && !app.lineInfo.has("320")}
@@ -216,6 +230,8 @@
 </div>
 
 <style>
+  .station-results { display: grid; gap: 6px; margin-top: 8px; max-height: min(280px, 35vh); overflow-y: auto; }
+  .station-results button { min-height: 48px; text-align: left; padding: 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--fg); background: var(--control); }
   .tram-results { display: grid; gap: 6px; margin-top: 8px; }
   .tram-results button { min-height: 44px; text-align: left; padding: 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--fg); background: var(--control); }
   .picker { position: relative; display: flex; flex-direction: column; }

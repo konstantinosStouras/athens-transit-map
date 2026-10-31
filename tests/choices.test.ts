@@ -7,6 +7,16 @@ function storage() {
   return values;
 }
 describe("remembered choices", () => {
+  it("restores a station opened directly with all its services", () => {
+    storage();
+    const c = emptyChoices();
+    c.panelView = "rail";
+    c.rail.mode = "station";
+    c.rail.station = "Πικροδάφνη";
+    saveChoices(c);
+    expect(readChoices()).toEqual(c);
+    expect(decodeChoices(encodeChoices(c))).toEqual(c);
+  });
   it("restores routes, endpoints, chosen journey and collapsed panels after a fresh read", () => {
     storage();
     const c = emptyChoices();

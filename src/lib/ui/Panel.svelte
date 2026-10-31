@@ -26,8 +26,8 @@
   // On a phone a popover covers the panel: what it covers cannot be reached by the keyboard either.
   const narrow = new MediaQuery("(max-width: 719px)");
   function toggleMobilePanel() { app.panelHidden = !app.panelHidden; }
-  function openRail(mode: string) {
-    app.railChoices.mode = mode; app.railChoices.station = ""; app.railChoices.train = null;
+  function openRail(mode: string, station = "") {
+    app.railChoices.mode = mode; app.railChoices.station = station; app.railChoices.train = null;
     suburbanOpen = true; stopsOpen = false; pop = null; app.panelHidden = false; app.loadMetro();
   }
   let tripButton: HTMLButtonElement | undefined = $state();
@@ -423,7 +423,7 @@
           <label class="switch">
             <input type="checkbox" checked={app.cityOn} disabled={cityMissing} onchange={e => app.setCityOn(e.currentTarget.checked)} />
             <span>{tr("Και των άλλων γραμμών ")}<small>{#if cityMissing}{tr("(όχι ακόμα διαθέσιμο)")}{:else if app.city}· {tr(app.city.vehicles.length)}{tr(" τώρα")}{/if}</small><br />
-              <small>{tr("Όλα τα λεωφορεία της πόλης, όχι μόνο οι γραμμές που διάλεξες. Κλειστό: λιγότερα δεδομένα.")}</small></span>
+              <small>{locale.language === "en" ? "Show city buses when no route is selected. Selected routes keep the map focused on your journey." : "Λεωφορεία πόλης όταν δεν έχεις επιλέξει γραμμή. Με επιλεγμένη γραμμή βλέπεις μόνο τη διαδρομή σου."}</small></span>
           </label>
           <div class="field" role="radiogroup" aria-label={tr("Τα άλλα λεωφορεία όταν πατάς ένα")}>
             <span>{tr("Όταν πατάς ένα, τα άλλα:")}</span>
@@ -456,7 +456,7 @@
             <span>{tr("Ηλικία θέσης ")}<b class="age">24″</b><br /><small>{#if app.motion}{tr("Πριν πόσο έστειλε θέση.")}{:else}{tr("Πάντα ανοιχτό όταν η κίνηση είναι κλειστή.")}{/if}</small></span>
           </label>
           <details class="hint">
-            <summary>{tr("Πώς κινούνται")}</summary>{tr("\r\n            Ο ΟΑΣΑ στέλνει θέσεις κάθε 20–60″. Όταν η νέα θέση είναι πολύ μπροστά, το όχημα πηγαίνει γρήγορα ως εκεί, πάνω\r\n            στον δρόμο, και αφήνει για λίγο μπλε ίχνος. Όταν είναι πίσω, γυρίζει αχνό πάνω στον δρόμο με γκρι διακεκομμένο\r\n            ίχνος: διόρθωση θέσης, όχι όπισθεν. Αχνό όχημα με πορτοκαλί ηλικία: δεν έστειλε θέση για πάνω από 1½ λεπτό, άρα μπορεί να είναι αλλού.\r\n            ")}{#if oldest != null}<br /><span title={tr("Ώρα δεδομένων " + (clock(oldest)))}>{tr("Ενημέρωση γραμμών πριν ")}{tr(duration(Math.max(0, app.serverNow / 1000 - oldest)))}.</span>{/if}
+            <summary>{tr("Πώς κινούνται")}</summary>{locale.language === "en" ? "Positions update as new data arrives, without movement trails. Faded vehicles have older position reports." : "Οι θέσεις ενημερώνονται με τα νέα δεδομένα, χωρίς ίχνη κίνησης. Τα αχνά οχήματα έχουν παλαιότερες αναφορές θέσης."}{#if oldest != null}<br /><span title={tr("Ώρα δεδομένων " + (clock(oldest)))}>{tr("Ενημέρωση γραμμών πριν ")}{tr(duration(Math.max(0, app.serverNow / 1000 - oldest)))}.</span>{/if}
             {#if cityAge != null && app.cityOn}<br /><span title={tr("Ώρα δεδομένων " + (clock(app.city!.updated_at)))}>{tr("Ενημέρωση πόλης πριν ")}{tr(duration(cityAge))}.</span>{/if}
           </details>
         </section>
