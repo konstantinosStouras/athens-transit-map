@@ -7,6 +7,28 @@ import { AppState } from "../src/lib/state.svelte";
 import type { LineLive } from "../src/lib/types";
 afterEach(() => vi.unstubAllGlobals());
 describe("saved route selections", () => {
+  it.each([false, true])("refits remaining routes on removal with panelHidden=%s", panelHidden => {
+    vi.stubGlobal("location", { pathname: "/", search: "", hash: "" });
+    vi.stubGlobal("history", { state: null, replaceState: vi.fn() });
+    const app = new AppState();
+    app.selected = ["040", "Χ95"];
+    app.metroLines = ["M1", "M3"];
+    app.focus = { "040": ["out"], "Χ95": ["airport"] };
+    app.panelHidden = panelHidden;
+    app.fit = vi.fn();
+    app.fitMetro = vi.fn();
+    app.toggleLine("Χ95");
+    expect(app.selected).toEqual(["040"]);
+    expect(app.detailLines).toEqual(["040"]);
+    expect(app.focus).toEqual({ "040": ["out"] });
+    expect(app.fit).toHaveBeenCalledWith(["040"]);
+    expect(app.metroLines).toEqual(["M1", "M3"]);
+    app.toggleMetroLine("M3");
+    expect(app.metroLines).toEqual(["M1"]);
+    expect(app.fitMetro).toHaveBeenCalledWith(["M1"]);
+    expect(app.selected).toEqual(["040"]);
+    expect(app.panelHidden).toBe(panelHidden);
+  });
   it("clears active and stored selections and returns to the main panel", () => {
     const values = new Map<string, string>();
     vi.stubGlobal("localStorage", { getItem: (k: string) => values.get(k) ?? null, setItem: (k: string, v: string) => values.set(k, v), removeItem: (k: string) => values.delete(k) });

@@ -339,6 +339,8 @@ export class AppState {
     } else {
       if (this.selection?.line === id) this.selection = null;
       this.closeLine(id);
+      // Reframe the remaining routes even when the choices panel is hidden.
+      this.fit(next);
     }
   }
 
@@ -370,6 +372,7 @@ export class AppState {
   setMetroLines(ids: string[]) {
     this.metroLines = ids;
     store("metroLines", ids);
+    this.fitMetro(ids);
   }
 
   // A station tapped on the map (null: none). Its card replaces a vehicle's or route's.
