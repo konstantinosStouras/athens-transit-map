@@ -93,7 +93,7 @@ export class AppState {
     this.panelHidden = c.panelHidden;
     this.panelView = c.panelView;
     this.stopRequest = null; this.metroStation = null;
-    this.tripEnds = null; this.tripStops = []; this.walking = []; this.railPosition = null;
+    this.tripEnds = null; this.tripStops = []; this.tripLegs = []; this.tripFocus = null; this.walking = []; this.railPosition = null;
     this.choicesRevision++;
     this.persistChoices();
     this.writeUrl();
@@ -111,7 +111,7 @@ export class AppState {
     this.stopRequest = null;
     this.metroStation = null;
     this.tripEnds = null;
-    this.tripStops = [];
+    this.tripStops = []; this.tripLegs = []; this.tripFocus = null;
     this.walking = [];
     this.railPosition = null;
     this.journey = emptyJourney();
@@ -190,6 +190,8 @@ export class AppState {
   tripEnds = $state.raw<{ from: [number, number]; to: [number, number] } | null>(null);
   // The stops of the trip picked in the planner: where to get on, change and get off ([lat, lon]).
   tripStops = $state.raw<{ at: [number, number]; name: string }[]>([]);
+  tripLegs = $state.raw<import("./map/journey").JourneyLeg[]>([]);
+  tripFocus = $state<number | null>(null);
   walking = $state.raw<WalkingLeg[]>([]);
   panelHidden = $state(this.savedChoices.panelHidden);
   railPosition = $state.raw<{ point: [number, number]; label: string } | null>(null);

@@ -26,6 +26,8 @@
   import { walkingFC, walkingLabel } from "../walking";
   import { routesFC, stopsFC, variantFC, type DrawnLine } from "./layers";
   import { selectionBounds } from "./framing";
+  import { journeyLines } from "./journey";
+  import { projectCandidates } from "../predict";
 
   setWorkerUrl(workerUrl);
 
@@ -98,20 +100,21 @@
   const key = (line: string, id: string) => `${line}/${id}`;
 
   const drawn: DrawnLine[] = $derived(
-    app.detailLines.flatMap(id => {
+    journeyLines(app.detailLines.flatMap(id => {
       const data = app.statics[id];
       const focus = app.focus[id];
       return data ? [{ id, color: app.lineColor(id).bg, data, visible: focus && new Set(focus) }] : [];
-    }),
+    }), app.tripLegs),
   );
 
   // Keep framed content clear of the panel: beside it on wide screens, below it on phones.
   function padding() {
     const panel = document.querySelector(".panel")?.getBoundingClientRect();
     if (!panel) return 40;
+    const side = app.tripLegs.length ? 105 : 48;
     return innerWidth >= 720 || innerWidth > innerHeight
-      ? { top: 48, bottom: 48, left: panel.right + 48, right: 64 }
-      : { top: panel.bottom + 48, bottom: 48, left: 48, right: 64 };
+      ? { top: 64, bottom: 48, left: panel.right + side, right: Math.max(64, side) }
+      : { top: panel.bottom + 64, bottom: 48, left: side, right: Math.max(64, side) };
   }
 
   function stopFollowing() {
@@ -124,8 +127,23 @@
   async function fitTo(_ids: string[] = []) {
     await tick();
     if (!map) return;
-    const frame = selectionBounds(drawn,
-      (app.metro?.lines ?? []).filter(line => app.metroLines.includes(line.id)), me?.mover.pos);
+    if (app.tripLegs.length && app.tripFocus != null) {
+      const points = app.tripLegs.flatMap(leg => [leg.from, leg.to]);
+      const point = points[app.tripFocus];
+      if (point) {
+        const transfer = app.tripLegs.length > 1 && (app.tripFocus === 1 || app.tripFocus === 2);
+        await fitPoints(transfer ? [points[1], points[2]] : app.tripFocus === 0 && app.tripEnds ? [app.tripEnds.from, point] : [point]);
+        return;
+      }
+    }
+    let frame = selectionBounds(drawn,
+      app.tripLegs.length ? [] : (app.metro?.lines ?? []).filter(line => app.metroLines.includes(line.id)), me?.mover.pos);
+    if (app.tripLegs.length) {
+      const extra = [...app.tripLegs.flatMap(leg => [leg.from, leg.to]), ...(app.tripEnds ? [app.tripEnds.from, app.tripEnds.to] : [])];
+      if (!frame) frame = [[extra[0][1], extra[0][0]], [extra[0][1], extra[0][0]]];
+      if (me) extra.push([me.mover.pos[1], me.mover.pos[0]]);
+      for (const [lat, lon] of extra) { frame[0][0] = Math.min(frame[0][0], lon); frame[0][1] = Math.min(frame[0][1], lat); frame[1][0] = Math.max(frame[1][0], lon); frame[1][1] = Math.max(frame[1][1], lat); }
+    }
     if (!frame) {
       // An empty selection returns to the close location view. A selected route
       // whose geometry is still loading must not trigger that reset.
@@ -470,6 +488,7 @@
       }
       if (dom) {
         const d = drawDom(e, pos, still);
+        d.wrap.hidden = !!app.tripLegs.length && !drawn.some(l => l.id === e.line && Object.entries(l.data.variants).some(([id, v]) => id === e.variant && projectCandidates(v.shape, pos).some(p => p.offM <= 150)));
         d.wrap.classList.toggle("filtered", !shown);
         d.el.classList.toggle("rewind", rewind);
       }
@@ -740,7 +759,7 @@
   });
 
   $effect(() => {
-    const on = app.speedOn;
+    const on = app.speedOn && !app.tripLegs.length;
     if (on && !speedData) loadSpeed().then(d => (speedData = d), () => {
       app.notify("Δεν φόρτωσαν οι ταχύτητες. Δοκίμασε ξανά.");
       app.setSpeedOn(false);
@@ -759,7 +778,7 @@
   });
 
   $effect(() => {
-    const m = map, visible = app.trafficOn;
+    const m = map, visible = app.trafficOn && !app.tripLegs.length;
     if (!m || !loaded || !trafficTiles) return;
     if (visible && !m.getSource("external-traffic")) {
       m.addSource("external-traffic", { type: "raster", tiles: [trafficTiles], tileSize: 256 });
@@ -810,7 +829,7 @@
   $effect(() => {
     if (!loaded) return;
     const data = app.metro;
-    (map!.getSource("metro") as GeoJSONSource).setData(data ? metroFC(data, app.metroLines, app.metroStation, locale.language) : EMPTY);
+    (map!.getSource("metro") as GeoJSONSource).setData(data && !app.tripLegs.length ? metroFC(data, app.metroLines, app.metroStation, locale.language) : EMPTY);
   });
 
   // No request is made without a configured endpoint and at least one shown rail line.
@@ -845,13 +864,13 @@
 
   $effect(() => {
     if (!loaded) return;
-    (map!.getSource("rail-live") as GeoJSONSource).setData(railVehicleFC(railFeed, app.metroLines, app.now / 1000));
+    (map!.getSource("rail-live") as GeoJSONSource).setData(app.tripLegs.length ? EMPTY : railVehicleFC(railFeed, app.metroLines, app.now / 1000));
   });
 
   // A train selected in the transport explorer, with its source visible on the marker.
   $effect(() => {
     const position = app.railPosition, m = map;
-    if (!position || !m) return;
+    if (!position || !m || app.tripLegs.length) return;
     const el = document.createElement("button");
     el.type = "button";
     el.className = "train-position";
@@ -892,13 +911,21 @@
   });
 
   $effect(() => {
-    const stops = app.tripStops, m = map;
+    const stops = app.tripLegs.length ? app.tripLegs.flatMap(leg => [leg.from, leg.to]).map((at, i) => ({ at, name: `${i + 1}. ${app.tripStops.find(s => Math.abs(s.at[0] - at[0]) + Math.abs(s.at[1] - at[1]) < 0.0001)?.name ?? ""}` })) : app.tripStops, m = map;
     if (!stops.length || !m) return;
-    const pins = stops.map(st => {
-      const el = document.createElement("div");
+    const grouped = stops.reduce<{ at: [number, number]; name: string; index: number }[]>((out, st, index) => {
+      const previous = out.find(s => Math.abs(s.at[0] - st.at[0]) + Math.abs(s.at[1] - st.at[1]) < 0.0001);
+      if (previous) previous.name += ` / ${st.name}`;
+      else out.push({ ...st, index });
+      return out;
+    }, []);
+    const pins = grouped.map(st => {
+      const el = document.createElement("button");
       el.className = "trip-stop";
       el.textContent = st.name;
-      return new Marker({ element: el, anchor: "bottom", offset: [0, -6] }).setLngLat([st.at[1], st.at[0]]).addTo(m);
+      el.type = "button";
+      el.onclick = () => { app.tripFocus = st.index; void fitTo(); };
+      return new Marker({ element: el, anchor: "bottom", offset: [0, app.tripLegs.length > 1 && st.index === 2 ? -42 : -6] }).setLngLat([st.at[1], st.at[0]]).addTo(m);
     });
     return () => pins.forEach(p => p.remove());
   });
@@ -1037,8 +1064,8 @@
 
 <div class="map" class:no-ages={!app.showAges && app.motion} {@attach setup}></div>
 {#if app.walking.some(leg => leg.route)}<div class="walking-credit"><span translate="no">Google Maps</span> · {locale.language === 'en' ? 'Walking routes are in beta; sidewalks or pedestrian paths may be missing.' : 'Δοκιμαστικές πεζές διαδρομές· μπορεί να λείπουν πεζοδρόμια ή πεζόδρομοι.'}</div>{/if}
-{#if app.trafficOn && trafficTiles}<div class="traffic-credit">{trafficCredit}</div>{/if}
-{#if app.speedOn}<SpeedLegend meta={speedData?.meta ?? null} onclose={() => app.setSpeedOn(false)} />{/if}
+{#if app.trafficOn && trafficTiles && !app.tripLegs.length}<div class="traffic-credit">{trafficCredit}</div>{/if}
+{#if app.speedOn && !app.tripLegs.length}<SpeedLegend meta={speedData?.meta ?? null} onclose={() => app.setSpeedOn(false)} />{/if}
 {#if Info}<Info {app} bind:open={app.infoOpen} bind:tab={app.infoTab} motion={app.motion} {ended} />{/if}
 
 {#if failed}
