@@ -24,7 +24,8 @@
   import { needsRecenter } from "./follow";
   import { trafficTileTemplate } from "../traffic";
   import { walkingFC, walkingLabel } from "../walking";
-  import { bounds, routesFC, stopsFC, variantFC, type DrawnLine } from "./layers";
+  import { routesFC, stopsFC, variantFC, type DrawnLine } from "./layers";
+  import { selectionBounds } from "./framing";
 
   setWorkerUrl(workerUrl);
 
@@ -124,17 +125,12 @@
   async function fitTo(_ids: string[] = []) {
     await tick();
     if (!map) return;
-    const bus = bounds(drawn);
-    const frame = new LngLatBounds();
-    if (bus) { frame.extend(bus[0]); frame.extend(bus[1]); }
-    for (const line of app.metro?.lines ?? []) {
-      if (app.metroLines.includes(line.id)) for (const path of line.paths) for (const point of path) frame.extend(point);
-    }
-    if (frame.isEmpty()) return;
+    const frame = selectionBounds(drawn,
+      (app.metro?.lines ?? []).filter(line => app.metroLines.includes(line.id)), me?.mover.pos);
+    if (!frame) return;
     stopFollowing();
     // Keep the full selected network and the live location dot in the same view.
-    if (me) frame.extend(me.mover.pos);
-    else frameOnFix = !!navigator.geolocation;
+    if (!me) frameOnFix = !!navigator.geolocation;
     map.fitBounds(frame, { padding: padding(), maxZoom: 15, duration: 600 });
   }
 
