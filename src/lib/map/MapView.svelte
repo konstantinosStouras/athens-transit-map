@@ -117,6 +117,7 @@
   function stopFollowing() {
     follow = false;
     flyOnFix = false;
+    frameOnFix = false;
   }
 
   // Include every displayed bus and rail route in the results view.
@@ -131,6 +132,9 @@
     }
     if (frame.isEmpty()) return;
     stopFollowing();
+    // Keep the full selected network and the live location dot in the same view.
+    if (me) frame.extend(me.mover.pos);
+    else frameOnFix = !!navigator.geolocation;
     map.fitBounds(frame, { padding: padding(), maxZoom: 15, duration: 600 });
   }
 
@@ -365,6 +369,7 @@
   let locState = $state<LocState>("off");
   let follow = $state(false);
   let flyOnFix = false;
+  let frameOnFix = false;
   let me: { marker: Marker; el: HTMLElement; mover: Mover; fix: Fix; rendered: LngLat } | null = null;
   const locator = new Locator({
     geo: navigator.geolocation,
@@ -373,6 +378,7 @@
       if (s === "denied") {
         follow = false;
         flyOnFix = false;
+        frameOnFix = false;
         app.notify("Ο browser δεν επιτρέπει πρόσβαση στην τοποθεσία. Άλλαξέ το από τις ρυθμίσεις του.");
       } else if (s === "unavailable") app.notify("Δεν βρέθηκε η τοποθεσία σου. Νέα προσπάθεια σε λίγο.");
     },
@@ -401,7 +407,10 @@
     me.el.classList.toggle("moving", plan.geom.length > 1);
     if (f.heading != null && Number.isFinite(f.heading)) me.el.style.setProperty("--h", `${f.heading}deg`);
     showAcc(m, f);
-    if (flyOnFix) {
+    if (frameOnFix) {
+      frameOnFix = false;
+      void fitTo();
+    } else if (flyOnFix) {
       flyOnFix = false;
       m.flyTo({ center: f.pos, zoom: Math.max(m.getZoom(), 17), duration: 1200, padding: padding() });
     }
@@ -418,6 +427,7 @@
     // Reset remounts the panel; measure its final size before positioning the map.
     await tick();
     if (!map || !navigator.geolocation) return;
+    frameOnFix = false;
     follow = true;
     flyOnFix = !me;
     if (me) map.easeTo({ center: me.mover.pos, zoom: 17, padding: padding(), duration: 600 });
@@ -426,6 +436,7 @@
 
   function locateClick() {
     if (!navigator.geolocation) return;
+    frameOnFix = false;
     if (follow) { stopFollowing(); return; }
     follow = true;
     flyOnFix = !me;
