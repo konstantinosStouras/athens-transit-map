@@ -79,7 +79,8 @@
   }
   const closeTrip = () => { pop = null; void tick().then(() => document.querySelector<HTMLButtonElement>(".directions-button")?.focus()); };   // its A and B stay on the map until its own ×
   const toggle = (p: "layers" | "help" | "trip") => {
-    app.panelHidden = false;
+    // Map tools are independent overlays; keep the user's hidden/open panel choice.
+    if (p === "trip") app.panelHidden = false;
     pop = pop === p ? null : p;
     if (pop === "help") void tick().then(() => document.getElementById("pop-help")?.focus());
     if (pop !== "layers") return;

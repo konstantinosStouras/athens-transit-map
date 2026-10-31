@@ -35,4 +35,13 @@ describe("selected route framing", () => {
   it("does not override the location view when no route geometry is loaded", () => {
     expect(selectionBounds([], [], [23, 38])).toBeNull();
   });
+  it("drops removed bus and metro extents while retaining the current location", () => {
+    const before = selectionBounds(buses, rail, [23, 38]);
+    expect(before).toEqual([[21, 36], [26, 42]]);
+    expect(selectionBounds(buses, [rail[1]], [23, 38])).toEqual([[21, 36], [24, 39]]);
+    expect(selectionBounds([buses[1]], [rail[1]], [23, 38])).toEqual([[21, 36], [23, 38]]);
+    expect(selectionBounds([buses[1]], [], [25, 40])).toEqual([[22, 37], [25, 40]]);
+    // Repeated refits and removals must not mutate a prior camera extent.
+    expect(before).toEqual([[21, 36], [26, 42]]);
+  });
 });
