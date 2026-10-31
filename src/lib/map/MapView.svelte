@@ -109,7 +109,7 @@
   function padding() {
     const panel = document.querySelector(".panel")?.getBoundingClientRect();
     if (!panel) return 40;
-    return innerWidth >= 720
+    return innerWidth >= 720 || innerWidth > innerHeight
       ? { top: 48, bottom: 48, left: panel.right + 48, right: 64 }
       : { top: panel.bottom + 48, bottom: 48, left: 48, right: 64 };
   }
@@ -640,6 +640,10 @@
     }
     m.on("dragstart", stopFollowing);   // only user gestures fire it
     m.on("resize", () => { void fitTo(); });
+    // Phone rotation and browser chrome can resize the map after the window event.
+    // Observe the actual container so the final fit uses its settled dimensions.
+    const mapSize = new ResizeObserver(() => { m.resize(); });
+    mapSize.observe(node);
     // The city layer loads the tiles of the view: at first, and 300 ms after the map stops moving (never during a move).
     const reportView = () => { const b = m.getBounds(); app.setCityView({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() }, m.getZoom()); };
     const reportSoon = debounce(reportView, VIEW_SETTLE_MS);
@@ -731,6 +735,7 @@
       app.fitMetro = () => {};
       app.recenterLocation = () => {};
       cancelAnimationFrame(raf);
+      mapSize.disconnect();
       reportSoon.cancel();
       reportFollow.cancel();
       document.removeEventListener("visibilitychange", onVisible);
