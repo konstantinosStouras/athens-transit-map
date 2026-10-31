@@ -8,6 +8,15 @@ export const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toL
 const noZeros = (id: string) => id.replace(/^0+(?=.)/, "");
 const byId = (a: LineInfo, b: LineInfo) => a.id.localeCompare(b.id, "el", { numeric: true });
 
+export function searchTramServices(query: string): string[] {
+  const q = fold(query.trim()).replace(/τ/g, "t");
+  if (/^(tram|tραμ)(\s|$)/.test(q) || q === "tram" || q === "tραμ") {
+    const number = q.match(/[67]/)?.[0];
+    return number ? [`T${number}`] : ["T6", "T7"];
+  }
+  return /^t\s*[67]$/.test(q) ? [`T${q.slice(-1)}`] : [];
+}
+
 export function searchLines(lines: LineInfo[], query: string): LineInfo[] {
   const sorted = [...lines].sort(byId);
   const q = fold(query.trim());

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t as tr, nameOf, locale } from "../i18n.svelte";
   import { tick, type Snippet } from "svelte";
-  import { searchLines } from "../search";
+  import { searchLines, searchTramServices } from "../search";
   import { MAX_LINES } from "../selection";
   import type { AppState } from "../state.svelte";
   import VehicleType from "./VehicleType.svelte";
@@ -10,8 +10,8 @@
   // Folded, the search field is hidden until searchOpen (the panel's magnifier, or the field below, was pressed);
   // onsearch asks the panel to open it, onclose says the search is over (a line was picked, or Escape).
   // tail: buttons of the panel, at the right of the first row (the chips, or the search with no chips).
-  let { app, expanded = true, searchOpen = false, onsearch, onclose, ondirections, tail }:
-    { app: AppState; expanded?: boolean; searchOpen?: boolean; onsearch?: () => void; onclose?: () => void; ondirections: () => void; tail?: Snippet } = $props();
+  let { app, expanded = true, searchOpen = false, onsearch, onclose, ondirections, onrail, tail }:
+    { app: AppState; expanded?: boolean; searchOpen?: boolean; onsearch?: () => void; onclose?: () => void; ondirections: () => void; onrail: (mode: string) => void; tail?: Snippet } = $props();
 
   const QUICK = ["040", "550", "Α1", "Χ95", "2"];
 
@@ -22,6 +22,8 @@
   let list: HTMLUListElement | undefined = $state();
 
   const results = $derived(searchLines(app.lines, query));
+  const tramResults = $derived(searchTramServices(query));
+  function pickTram(mode: string) { query = ""; open = false; input?.blur(); onclose?.(); onrail(mode); }
   const showInput = true;
 
   // The field is gone (the panel folded, the search ended): so is its list.
@@ -63,6 +65,9 @@
     } else if (e.key === "PageDown" || e.key === "PageUp") {
       e.preventDefault();
       move(active + (e.key === "PageDown" ? 8 : -8));
+    } else if (e.key === "Enter" && open && tramResults.length) {
+      e.preventDefault();
+      pickTram(tramResults[0]);
     } else if (e.key === "Enter" && open && results[active]) {
       e.preventDefault();
       pick(results[active].id);
@@ -160,12 +165,19 @@
   {/if}
 
   {#if open && showInput}
+    {#if tramResults.length}
+      <div class="tram-results" aria-label={locale.language === "en" ? "Tram schedules" : "Δρομολόγια τραμ"}>
+        {#each tramResults as mode}
+          <button type="button" onclick={() => pickTram(mode)}>{locale.language === "en" ? `Tram ${mode} · Schedules and stations` : `Τραμ ${mode} · Δρομολόγια και σταθμοί`}</button>
+        {/each}
+      </div>
+    {/if}
     <ul id="line-list" class="list" role="listbox" aria-label={tr("Γραμμές")} aria-multiselectable="true" bind:this={list}>
       {#if app.linesFailed}
         <li class="empty">{tr("Δεν φορτώθηκε η λίστα γραμμών. Δοκίμασε ξανά σε λίγο.")}</li>
       {:else if !app.lines.length}
         <li class="empty">{tr("Φόρτωση γραμμών…")}</li>
-      {:else if !results.length && query.trim() !== "320"}
+      {:else if !results.length && !tramResults.length && query.trim() !== "320"}
         <li class="empty">{locale.language === "en" ? "No matching line in the current data." : "Δεν υπάρχει αντίστοιχη γραμμή στα τρέχοντα δεδομένα."}</li>
       {/if}
       {#if query.trim() === "320" && app.lines.length && !app.lineInfo.has("320")}
@@ -204,6 +216,8 @@
 </div>
 
 <style>
+  .tram-results { display: grid; gap: 6px; margin-top: 8px; }
+  .tram-results button { min-height: 44px; text-align: left; padding: 10px; border: 1px solid var(--border); border-radius: 8px; color: var(--fg); background: var(--control); }
   .picker { position: relative; display: flex; flex-direction: column; }
   .search-row { display: flex; align-items: center; min-width: 0; background: var(--control); border: 1px solid var(--border); border-radius: 12px; }
   .search-row input { flex: 1; min-width: 0; width: 0; height: 48px; padding: 8px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--fg); font-size: 16px; }

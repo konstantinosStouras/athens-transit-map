@@ -26,6 +26,10 @@
   // On a phone a popover covers the panel: what it covers cannot be reached by the keyboard either.
   const narrow = new MediaQuery("(max-width: 719px)");
   function toggleMobilePanel() { app.panelHidden = !app.panelHidden; }
+  function openRail(mode: string) {
+    app.railChoices.mode = mode; app.railChoices.station = ""; app.railChoices.train = null;
+    suburbanOpen = true; stopsOpen = false; pop = null; app.panelHidden = false; app.loadMetro();
+  }
   let tripButton: HTMLButtonElement | undefined = $state();
   let layersButton: HTMLButtonElement | undefined = $state();
   let helpButton: HTMLButtonElement | undefined = $state();
@@ -167,8 +171,8 @@
   <div class="menu-heading"><strong>OASA · Live</strong><button type="button" onclick={() => { menuOpen = false; void tick().then(() => menuButton?.focus()); }} aria-label={locale.language === "en" ? "Close menu" : "Κλείσιμο μενού"}>×</button></div>
   <p class="menu-label">{locale.language === "en" ? "Language" : "Γλώσσα"}</p>
     <div class="language" role="group" aria-label={locale.language === "el" ? "Γλώσσα" : "Language"}>
-      <button type="button" lang="el" aria-label="Ελληνικά" aria-pressed={locale.language === "el"} onclick={() => setLanguage("el")}><img src={`${import.meta.env.BASE_URL}flags/el.svg`} alt="" width="27" height="18" /></button>
-      <button type="button" lang="en" aria-label="English" aria-pressed={locale.language === "en"} onclick={() => setLanguage("en")}><img src={`${import.meta.env.BASE_URL}flags/en.svg`} alt="" width="27" height="18" /></button>
+      <button type="button" lang="el" aria-label="Ελληνικά" aria-pressed={locale.language === "el"} onclick={() => setLanguage("el")}><img src={`${import.meta.env.BASE_URL}flags/el.svg`} alt="" width="27" height="18" /><span>Ελληνικά</span></button>
+      <button type="button" lang="en" aria-label="English" aria-pressed={locale.language === "en"} onclick={() => setLanguage("en")}><img src={`${import.meta.env.BASE_URL}flags/en.svg`} alt="" width="27" height="18" /><span>English</span></button>
     </div>
 
   <p class="menu-label">{locale.language === "en" ? "Explore" : "Εξερεύνηση"}</p>
@@ -277,7 +281,7 @@
   <div hidden={pop === "trip"}>
   <!-- Always shown: the picked lines, the search, and the chevron. The map buttons are on the right (.rail). -->
   <div class="bar">
-    {#key app.choicesReset}<LinePicker {app} expanded={!collapsed} searchOpen={searching} onsearch={() => (searching = true)} onclose={() => (searching = false)} ondirections={() => toggle("trip")} {tail} />{/key}
+    {#key app.choicesReset}<LinePicker {app} expanded={!collapsed} searchOpen={searching} onsearch={() => (searching = true)} onclose={() => (searching = false)} ondirections={() => toggle("trip")} onrail={openRail} {tail} />{/key}
   </div>
 
   {#if app.selected.length || app.cityOn}
@@ -542,7 +546,7 @@
   .brand { font-weight: 800; font-size: 15px; white-space: nowrap; letter-spacing: -.02em; }
   .language { display: flex; gap: 4px; }
   .language img { display: block; margin: auto; border-radius: 2px; }
-  .language button { width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 10px; background: var(--control); cursor: pointer; padding: 0; }
+  .language button { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 110px; height: 44px; border: 1px solid var(--border); border-radius: 10px; background: var(--control); cursor: pointer; padding: 0; }
   .language button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); }
   .account-control { display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 44px; min-height: 44px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--control); color: var(--fg); cursor: pointer; font-size: 12px; font-weight: 650; }
   .account-control.signed-in { color: var(--accent); border-color: var(--accent); }
