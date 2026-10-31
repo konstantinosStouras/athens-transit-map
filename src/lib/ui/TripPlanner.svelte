@@ -38,6 +38,7 @@
   let data = $state.raw<{ ix: TripIndex; places: Place[]; known: Set<string>; stale: string | null } | null>(null);
   let failed = $state(false);
   let folded = $state(false);
+  let alternatives = $state(false);
   let openField = $state<Field | null>(null);
   let activeKey = $state<string | null>(null);
   // Geocoder answers for the open field's text, and the request in flight (one per field).
@@ -201,6 +202,19 @@
 
   // The result shown alone (a line, or "l1>l2" for a change), with its stops on the map.
   let picked = $state<string | null>(untrack(() => app.journey.picked));
+  $effect(() => {
+    const direct = trips?.find(t => t.line === picked);
+    const transfer = xfers.find(x => xkey(x) === picked);
+    const legs = transfer?.legs ?? (direct ? [{ ...direct.variants[0], line: direct.line }] : []);
+    app.tripLegs = legs.map(v => ({ line: v.line, variant: v.id, i: v.i, j: v.j, from: ptOf(v.from), to: ptOf(v.to) }));
+    app.tripFocus = null;
+  });
+  const steps = $derived(app.tripLegs.flatMap((leg, index) => [
+    { at: leg.from, name: app.tripStops.find(s => distM(s.at, leg.from) < 5)?.name ?? "", label: locale.language === "en" ? `Board ${leg.line}` : `Επιβίβαση ${leg.line}` },
+    { at: leg.to, name: app.tripStops.find(s => distM(s.at, leg.to) < 5)?.name ?? "", label: locale.language === "en" ? (index < app.tripLegs.length - 1 ? `Leave ${leg.line} · change` : `Get off ${leg.line}`) : (index < app.tripLegs.length - 1 ? `Αποβίβαση ${leg.line} · αλλαγή` : `Αποβίβαση ${leg.line}`) },
+  ]));
+  function focusStep(index: number) { app.tripFocus = index; app.panelHidden = true; void tick().then(() => app.fit([])); }
+  function focusJourney() { app.tripFocus = null; app.panelHidden = true; void tick().then(() => app.fit([])); }
   const stopAt = (k: number) => ({ at: ptOf(k), name: stop(k) });
   const xkey = (x: TripTransfer) => `${x.legs[0].line}>${x.legs[1].line}`;
   function setWalking(board: number, off: number, transfer?: [number, number]) {
@@ -212,20 +226,23 @@
     app.walking = legs;
   }
   function focusWalk() {
+    app.tripFocus = 0;
     const leg = app.walking.find(w => w.kind === "board");
     if (!leg) return;
     app.panelHidden = true;
     void tick().then(() => app.fitPoints(leg.route ? leg.route.geometry.coordinates.map(p => [p[1], p[0]]) : [leg.from, leg.to]));
   }
   function solo(t: TripLine) {
+    alternatives = false;
     const v = t.variants[0];
-    app.showTrip([{ id: t.line, variants: t.variants.map(x => x.id) }], true);
+    app.showTrip([{ id: t.line, variants: [v.id] }], true);
     app.tripStops = [stopAt(v.from), stopAt(v.to)];
     picked = t.line;
     setWalking(v.from, v.to);
     app.panelHidden = true;
   }
   function pickXfer(x: TripTransfer) {   // another trip than the alert's: the alert ends
+    alternatives = false;
     const [a, b] = x.legs;
     app.showTrip([{ id: a.line, variants: [a.id] }, { id: b.line, variants: [b.id] }]);
     app.tripStops = [stopAt(a.from), stopAt(a.to), ...(stop(b.from) === stop(a.to) ? [] : [stopAt(b.from)]), stopAt(b.to)];
@@ -296,7 +313,7 @@
   function close() {
     stopSearch();
     app.tripEnds = null;
-    app.tripStops = []; app.walking = [];
+    app.tripStops = []; app.walking = []; app.tripLegs = []; app.tripFocus = null;
     onclose();
   }
 
@@ -498,8 +515,17 @@
     {:else if trips && !trips.length && !xfers.length}
       <p class="note">{locale.language === "en" ? "No route found with stops within 500 m of each end. Try a nearby starting point or destination." : "Δεν βρέθηκε διαδρομή με στάσεις έως 500 μ. σε ευθεία από κάθε σημείο. Δοκίμασε κοντινή αφετηρία ή προορισμό."}</p>
     {:else if trips}
-      <p class="note">{locale.language === "en" ? "Choose a journey below to show its lines and stops. Calculate the walking route separately, or open Google Maps." : "Διάλεξε διαδρομή παρακάτω για γραμμές και στάσεις. Υπολόγισε χωριστά τη διαδρομή πεζή ή άνοιξε το Google Maps."}</p>
+      {#if picked}
+        <div class="journey-steps">
+          <strong>{locale.language === "en" ? "Your journey" : "Η διαδρομή σου"}: {picked.replace(">", " → ")}</strong>
+          <ol>{#each steps as step, i}<li><button type="button" onclick={() => focusStep(i)}><b>{i + 1}. {step.label}</b><span>{step.name}</span></button></li>{/each}</ol>
+          <button type="button" onclick={focusJourney}>{locale.language === "en" ? "Show whole journey" : "Δείξε όλη τη διαδρομή"}</button>
+          <button type="button" aria-expanded={alternatives} onclick={() => alternatives = !alternatives}>{locale.language === "en" ? (alternatives ? "Hide alternatives" : "Change journey") : (alternatives ? "Απόκρυψη επιλογών" : "Αλλαγή διαδρομής")}</button>
+        </div>
+      {/if}
+      {#if !picked || alternatives}<p class="note">{locale.language === "en" ? "Choose a journey below to show its lines and stops." : "Διάλεξε διαδρομή παρακάτω για γραμμές και στάσεις."}</p>{/if}
       {#if picked && app.walking[0]}<div class="walk-summary" role="status"><strong>{locale.language === "en" ? "Shown on map: " : "Στον χάρτη: "}{picked.replace(">", " → ")}</strong><WalkingDetails {app} /><button type="button" onclick={focusWalk}>{locale.language === "en" ? "Show boarding stop on map" : "Δείξε τη στάση επιβίβασης στον χάρτη"}</button><a href={walkUrl(app.walking[0].to, app.walking[0].from)} target="_blank" rel="noopener noreferrer">{locale.language === "en" ? "Walking directions in Google Maps ↗" : "Οδηγίες πεζή στο Google Maps ↗"}</a></div>{/if}
+      {#if !picked || alternatives}
       {#if !trips.length}<p class="note">{tr("Καμία γραμμή λεωφορείου δεν πάει χωρίς αλλαγή.")}</p>{/if}
       <ol class="results">
         {#each trips as t, k (t.line)}
@@ -545,6 +571,7 @@
         </ol>
       {/if}
       {#if picked && trips.length}<button type="button" class="link all" onclick={showAll}>{tr("Όλες οι γραμμές στον χάρτη")}</button>{/if}
+      {/if}
       {#if shown}
         <div class="alert">
           {#if app.alert}
@@ -624,6 +651,11 @@
 </div>
 
 <style>
+  .journey-steps { display: grid; gap: 8px; margin: 12px 0; }
+  .journey-steps ol { list-style: none; padding: 0; margin: 0; }
+  .journey-steps button { min-height: 44px; width: 100%; padding: 8px; text-align: left; background: var(--control); color: var(--fg); border: 1px solid var(--border); border-radius: 8px; }
+  .journey-steps li { margin: 6px 0; }
+  .journey-steps span { display: block; margin-top: 4px; }
   .journey-actions { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0; background: var(--panel); }
   .journey-actions button { min-height: 44px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--control); color: var(--fg); cursor: pointer; }
 
