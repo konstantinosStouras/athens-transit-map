@@ -127,7 +127,12 @@
     if (!map) return;
     const frame = selectionBounds(drawn,
       (app.metro?.lines ?? []).filter(line => app.metroLines.includes(line.id)), me?.mover.pos);
-    if (!frame) return;
+    if (!frame) {
+      // An empty selection returns to the close location view. A selected route
+      // whose geometry is still loading must not trigger that reset.
+      if (!app.detailLines.length && !app.metroLines.length) await recenterLocation();
+      return;
+    }
     stopFollowing();
     // Keep the full selected network and the live location dot in the same view.
     if (!me) frameOnFix = !!navigator.geolocation;
@@ -422,7 +427,7 @@
   async function recenterLocation() {
     // Reset remounts the panel; measure its final size before positioning the map.
     await tick();
-    if (!map || !navigator.geolocation) return;
+    if (!map || !navigator.geolocation || app.detailLines.length || app.metroLines.length) return;
     frameOnFix = false;
     follow = true;
     flyOnFix = !me;

@@ -4,6 +4,9 @@ import { languageFromSearch, withLanguage } from "../../public/language-url.js";
 export const LANGUAGE_KEY = "oasa-language";
 function initialLanguage(): Language {
   if (typeof window === "undefined") return "el";
+  if (!new URLSearchParams(window.location.search).has("lang")) {
+    try { const saved = localStorage.getItem(LANGUAGE_KEY); if (saved === "en" || saved === "el") return saved; } catch { /* private browsing */ }
+  }
   return languageFromSearch(window.location.search);
 }
 export const locale = $state({ language: initialLanguage() });
