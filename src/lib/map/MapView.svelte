@@ -110,8 +110,8 @@
     const panel = document.querySelector(".panel")?.getBoundingClientRect();
     if (!panel) return 40;
     return innerWidth >= 720
-      ? { top: 40, bottom: 40, left: panel.right + 24, right: 60 }
-      : { top: panel.bottom + 16, bottom: 24, left: 24, right: 24 };
+      ? { top: 48, bottom: 48, left: panel.right + 48, right: 64 }
+      : { top: panel.bottom + 48, bottom: 48, left: 48, right: 64 };
   }
 
   function stopFollowing() {
@@ -639,6 +639,7 @@
       credit.addEventListener("click", e => { e.preventDefault(); e.stopImmediatePropagation(); void openInfo(); }, true);
     }
     m.on("dragstart", stopFollowing);   // only user gestures fire it
+    m.on("resize", () => { void fitTo(); });
     // The city layer loads the tiles of the view: at first, and 300 ms after the map stops moving (never during a move).
     const reportView = () => { const b = m.getBounds(); app.setCityView({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() }, m.getZoom()); };
     const reportSoon = debounce(reportView, VIEW_SETTLE_MS);
@@ -796,6 +797,25 @@
   $effect(() => {
     const m = map, d = dark;
     if (m && started && d !== styleDark) restyle(m, d);
+  });
+
+  // Panel toggles, expanded details and asynchronously loaded planner content change
+  // the usable map area. Observe the replacement panel after a reset/cloud restore too.
+  $effect(() => {
+    const ready = loaded;
+    void app.choicesRevision;
+    void app.choicesReset;
+    if (!ready) return;
+    let disposed = false;
+    let observer: ResizeObserver | undefined;
+    void tick().then(() => {
+      if (disposed) return;
+      const panel = document.querySelector(".panel");
+      if (!panel) return;
+      observer = new ResizeObserver(() => { void fitTo(); });
+      observer.observe(panel);
+    });
+    return () => { disposed = true; observer?.disconnect(); };
   });
 
   // Geometry changes reframe results; live GPS and vehicle updates do not.
