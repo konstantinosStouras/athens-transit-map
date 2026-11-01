@@ -524,7 +524,7 @@
         </div>
       {/if}
       {#if !picked || alternatives}<p class="note">{locale.language === "en" ? "Choose a journey below to show its lines and stops." : "Διάλεξε διαδρομή παρακάτω για γραμμές και στάσεις."}</p>{/if}
-      {#if picked && app.walking[0]}<div class="walk-summary" role="status"><strong>{locale.language === "en" ? "Shown on map: " : "Στον χάρτη: "}{picked.replace(">", " → ")}</strong><WalkingDetails {app} /><button type="button" onclick={focusWalk}>{locale.language === "en" ? "Show boarding stop on map" : "Δείξε τη στάση επιβίβασης στον χάρτη"}</button><a href={walkUrl(app.walking[0].to, app.walking[0].from)} target="_blank" rel="noopener noreferrer">{locale.language === "en" ? "Walking directions in Google Maps ↗" : "Οδηγίες πεζή στο Google Maps ↗"}</a></div>{/if}
+      {#if picked && app.walking[0]}<div class="walk-summary" role="status"><strong>{locale.language === "en" ? "Shown on map: " : "Στον χάρτη: "}{picked.replace(">", " → ")}</strong><WalkingDetails {app} /><button type="button" onclick={focusWalk}>{locale.language === "en" ? "Show boarding stop on map" : "Δείξε τη στάση επιβίβασης στον χάρτη"}</button></div>{/if}
       {#if !picked || alternatives}
       {#if !trips.length}<p class="note">{tr("Καμία γραμμή λεωφορείου δεν πάει χωρίς αλλαγή.")}</p>{/if}
       <ol class="results">
@@ -711,7 +711,6 @@
   .results .selection-label { color: var(--accent); font-weight: 700; }
   .walk-summary { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--accent); border-radius: 10px; font-size: 12px; }
   .walk-summary button { min-height: 44px; background: var(--accent); color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
-  .walk-summary a { color: var(--accent); }
   .pick b { font-variant-numeric: tabular-nums; }
   .maps { flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin: 0; border-radius: 8px; color: var(--muted); }
   .maps:hover { background: var(--control); color: var(--fg); }
